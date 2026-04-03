@@ -1,5 +1,4 @@
 require('dotenv').config();
-const path          = require('path');
 const express       = require('express');
 const cors          = require('cors');
 const cookieSession = require('cookie-session');
@@ -50,10 +49,5 @@ app.get('/api/health', (_, res) => res.json({
     FRONTEND_URL:         !!process.env.FRONTEND_URL,
   },
 }));
-
-// ── Serve built frontend ──────────────────────────────────────────────────────
-const distDir = path.join(__dirname, '../frontend/dist');
-app.use(express.static(distDir));
-app.get('*', (_, res) => res.sendFile(path.join(distDir, 'index.html')));
 
 module.exports = app;
