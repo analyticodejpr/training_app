@@ -13,8 +13,14 @@ export const disconnectStrava = () => api.delete('/auth/strava/disconnect')
 export const disconnectWhoop  = () => api.delete('/auth/whoop/disconnect')
 
 // Direct navigation — avoids cross-origin cookie issues with AJAX+redirect
-export const connectStrava = () => { window.location.href = `${BASE}/api/auth/strava/connect` }
-export const connectWhoop  = () => { window.location.href = `${BASE}/api/auth/whoop/connect` }
+export const connectStrava = () => {
+  if (!BASE) { alert('VITE_API_URL is not set. Add it to your frontend Vercel project env vars and redeploy.'); return }
+  window.location.href = `${BASE}/api/auth/strava/connect`
+}
+export const connectWhoop = () => {
+  if (!BASE) { alert('VITE_API_URL is not set. Add it to your frontend Vercel project env vars and redeploy.'); return }
+  window.location.href = `${BASE}/api/auth/whoop/connect`
+}
 
 // ── Strava ────────────────────────────────────────────────────────────────────
 export const getStravaAthlete    = () => api.get('/strava/athlete').then(r => r.data)
