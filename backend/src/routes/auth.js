@@ -1,11 +1,10 @@
-const express  = require('express');
-const axios    = require('axios');
-const crypto   = require('crypto');
-const { saveTokens, deleteTokens, getTokens } = require('../db/database');
+const express = require('express');
+const axios   = require('axios');
+const crypto  = require('crypto');
 
 const router = express.Router();
 
-let _whoopState = null;
+// ── helpers ───────────────────────────────────────────────────────────────────
 
 function makeWhoopParams(state) {
   return new URLSearchParams({
@@ -21,9 +20,9 @@ function makeWhoopParams(state) {
 
 router.get('/strava/connect', (req, res) => {
   const params = new URLSearchParams({
-    client_id:     process.env.STRAVA_CLIENT_ID,
-    redirect_uri:  process.env.STRAVA_REDIRECT_URI,
-    response_type: 'code',
+    client_id:       process.env.STRAVA_CLIENT_ID,
+    redirect_uri:    process.env.STRAVA_REDIRECT_URI,
+    response_type:   'code',
     approval_prompt: 'auto',
     scope: 'read,activity:read_all,profile:read_all',
   });
@@ -42,13 +41,14 @@ router.get('/strava/callback', async (req, res) => {
       grant_type: 'authorization_code',
     });
 
-    saveTokens('strava', {
+    // Store tokens in the user's encrypted cookie session
+    req.session.strava = {
       access_token:  data.access_token,
       refresh_token: data.refresh_token,
       expires_at:    data.expires_at,
       athlete_id:    String(data.athlete?.id || ''),
       scope:         data.scope || '',
-    });
+    };
 
     res.redirect(`${process.env.FRONTEND_URL}/?connected=strava`);
   } catch (err) {
@@ -57,23 +57,46 @@ router.get('/strava/callback', async (req, res) => {
   }
 });
 
+router.get('/strava/url', (req, res) => {
+  const params = new URLSearchParams({
+    client_id:       process.env.STRAVA_CLIENT_ID,
+    redirect_uri:    process.env.STRAVA_REDIRECT_URI,
+    response_type:   'code',
+    approval_prompt: 'auto',
+    scope: 'read,activity:read_all,profile:read_all',
+  });
+  res.json({ url: `https://www.strava.com/oauth/authorize?${params}` });
+});
+
 // ── WHOOP OAuth ───────────────────────────────────────────────────────────────
 
 router.get('/whoop/connect', (req, res) => {
-  _whoopState = crypto.randomBytes(16).toString('hex');
-  res.redirect(`https://api.prod.whoop.com/oauth/oauth2/auth?${makeWhoopParams(_whoopState)}`);
+  // Store CSRF state in session (per-user, not global)
+  req.session.whoopState = crypto.randomBytes(16).toString('hex');
+  res.redirect(`https://api.prod.whoop.com/oauth/oauth2/auth?${makeWhoopParams(req.session.whoopState)}`);
+});
+
+router.get('/whoop/url', (req, res) => {
+  req.session.whoopState = crypto.randomBytes(16).toString('hex');
+  res.json({ url: `https://api.prod.whoop.com/oauth/oauth2/auth?${makeWhoopParams(req.session.whoopState)}` });
 });
 
 router.get('/whoop/callback', async (req, res) => {
   const { code, error, error_description, state } = req.query;
+
   if (error) {
     console.error('WHOOP OAuth denied:', error, error_description);
-    return res.redirect(`${process.env.FRONTEND_URL}/?error=whoop_denied&whoop_error=${encodeURIComponent(error)}&whoop_desc=${encodeURIComponent(error_description || '')}`);
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/?error=whoop_denied&whoop_error=${encodeURIComponent(error)}&whoop_desc=${encodeURIComponent(error_description || '')}`
+    );
   }
-  if (!state || state !== _whoopState) {
+
+  if (!state || state !== req.session.whoopState) {
     return res.redirect(`${process.env.FRONTEND_URL}/?error=whoop_denied&whoop_error=state_mismatch`);
   }
-  _whoopState = null;
+
+  // Clear used state
+  req.session.whoopState = null;
 
   try {
     const params = new URLSearchParams({
@@ -90,13 +113,13 @@ router.get('/whoop/callback', async (req, res) => {
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
-    saveTokens('whoop', {
+    // Store tokens in the user's encrypted cookie session
+    req.session.whoop = {
       access_token:  data.access_token,
       refresh_token: data.refresh_token,
       expires_at:    Math.floor(Date.now() / 1000) + (data.expires_in || 3600),
-      athlete_id:    '',
       scope:         data.scope || '',
-    });
+    };
 
     res.redirect(`${process.env.FRONTEND_URL}/?connected=whoop`);
   } catch (err) {
@@ -105,41 +128,22 @@ router.get('/whoop/callback', async (req, res) => {
   }
 });
 
-// Return OAuth URLs as JSON (avoids proxy-redirect issues in dev)
-router.get('/whoop/url', (req, res) => {
-  _whoopState = crypto.randomBytes(16).toString('hex');
-  res.json({ url: `https://api.prod.whoop.com/oauth/oauth2/auth?${makeWhoopParams(_whoopState)}` });
-});
-
-router.get('/strava/url', (req, res) => {
-  const params = new URLSearchParams({
-    client_id:       process.env.STRAVA_CLIENT_ID,
-    redirect_uri:    process.env.STRAVA_REDIRECT_URI,
-    response_type:   'code',
-    approval_prompt: 'auto',
-    scope: 'read,activity:read_all,profile:read_all',
-  });
-  res.json({ url: `https://www.strava.com/oauth/authorize?${params}` });
-});
-
 // ── Status & Disconnect ───────────────────────────────────────────────────────
 
 router.get('/status', (req, res) => {
-  const strava = getTokens('strava');
-  const whoop  = getTokens('whoop');
   res.json({
-    strava: !!strava,
-    whoop:  !!whoop,
+    strava: !!req.session.strava,
+    whoop:  !!req.session.whoop,
   });
 });
 
 router.delete('/strava/disconnect', (req, res) => {
-  deleteTokens('strava');
+  req.session.strava = null;
   res.json({ ok: true });
 });
 
 router.delete('/whoop/disconnect', (req, res) => {
-  deleteTokens('whoop');
+  req.session.whoop = null;
   res.json({ ok: true });
 });
 

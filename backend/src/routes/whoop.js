@@ -3,10 +3,17 @@ const whoop   = require('../services/whoopService');
 
 const router = express.Router();
 
+function makeTokenStore(req) {
+  return {
+    get:  (provider) => req.session[provider] || null,
+    save: (provider, data) => { req.session[provider] = data; },
+  };
+}
+
 function handle(fn) {
   return async (req, res) => {
     try {
-      const data = await fn(req);
+      const data = await fn(req, makeTokenStore(req));
       res.json(data);
     } catch (err) {
       const status = err.message.includes('not connected') ? 401 : 500;
@@ -15,12 +22,12 @@ function handle(fn) {
   };
 }
 
-router.get('/profile',      handle(() => whoop.getProfile()));
-router.get('/body',         handle(() => whoop.getBodyMeasurement()));
-router.get('/cycles',       handle(req => whoop.getCycles({ start: req.query.start, end: req.query.end })));
-router.get('/recoveries',   handle(req => whoop.getRecoveries({ start: req.query.start, end: req.query.end })));
-router.get('/sleep',        handle(req => whoop.getSleepData({ start: req.query.start, end: req.query.end })));
-router.get('/workouts',     handle(req => whoop.getWorkouts({ start: req.query.start, end: req.query.end })));
-router.get('/daily',        handle(req => whoop.getDailySummary(Number(req.query.days) || 60)));
+router.get('/profile',    handle((req, ts) => whoop.getProfile(ts)));
+router.get('/body',       handle((req, ts) => whoop.getBodyMeasurement(ts)));
+router.get('/cycles',     handle((req, ts) => whoop.getCycles(ts, { start: req.query.start, end: req.query.end })));
+router.get('/recoveries', handle((req, ts) => whoop.getRecoveries(ts, { start: req.query.start, end: req.query.end })));
+router.get('/sleep',      handle((req, ts) => whoop.getSleepData(ts, { start: req.query.start, end: req.query.end })));
+router.get('/workouts',   handle((req, ts) => whoop.getWorkouts(ts, { start: req.query.start, end: req.query.end })));
+router.get('/daily',      handle((req, ts) => whoop.getDailySummary(ts, Number(req.query.days) || 60)));
 
 module.exports = router;
