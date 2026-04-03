@@ -35,7 +35,20 @@ app.use('/auth',   authRoutes);
 app.use('/strava', stravaLimiter, stravaRoutes);
 app.use('/whoop',  whoopLimiter,  whoopRoutes);
 
-// ── Health check ──────────────────────────────────────────────────────────────
-app.get('/health', (_, res) => res.json({ ok: true, ts: new Date().toISOString() }));
+// ── Health check + env var status ────────────────────────────────────────────
+app.get('/health', (_, res) => res.json({
+  ok: true,
+  ts: new Date().toISOString(),
+  env: {
+    STRAVA_CLIENT_ID:     !!process.env.STRAVA_CLIENT_ID,
+    STRAVA_CLIENT_SECRET: !!process.env.STRAVA_CLIENT_SECRET,
+    STRAVA_REDIRECT_URI:  !!process.env.STRAVA_REDIRECT_URI,
+    WHOOP_CLIENT_ID:      !!process.env.WHOOP_CLIENT_ID,
+    WHOOP_CLIENT_SECRET:  !!process.env.WHOOP_CLIENT_SECRET,
+    WHOOP_REDIRECT_URI:   !!process.env.WHOOP_REDIRECT_URI,
+    SESSION_SECRET:       !!process.env.SESSION_SECRET,
+    FRONTEND_URL:         !!process.env.FRONTEND_URL,
+  },
+}));
 
 module.exports = app;
