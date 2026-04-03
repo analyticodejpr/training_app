@@ -101,8 +101,11 @@ export default function LoginPage({ authStatus }) {
   const whoopConnected  = authStatus?.whoop
   const bothConnected   = stravaConnected && whoopConnected
 
-  function connectStrava() {
-    if (!stravaConnected) window.location.href = '/api/auth/strava/connect'
+  async function connectStrava() {
+    if (stravaConnected) return
+    const r = await fetch('/api/auth/strava/url')
+    const { url } = await r.json()
+    window.location.href = url
   }
 
   async function connectWhoop() {

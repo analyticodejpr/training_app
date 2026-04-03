@@ -12,6 +12,12 @@ export default function Header({ authStatus, onDisconnect, theme, setTheme }) {
     onDisconnect?.()
   }
 
+  async function connectStrava() {
+    const r = await fetch('/api/auth/strava/url')
+    const { url } = await r.json()
+    window.location.href = url
+  }
+
   async function connectWhoop() {
     const r = await fetch('/api/auth/whoop/url')
     const { url } = await r.json()
@@ -47,7 +53,7 @@ export default function Header({ authStatus, onDisconnect, theme, setTheme }) {
               connected={authStatus?.strava}
               confirming={confirming === 'strava'}
               color="var(--accent)"
-              onConnect={() => (window.location.href = '/api/auth/strava/connect')}
+              onConnect={connectStrava}
               onDisconnect={() => handleDisconnect('strava')}
             />
             <PlatformPill
