@@ -101,6 +101,21 @@ export default function LoginPage({ authStatus }) {
   const whoopConnected  = authStatus?.whoop
   const bothConnected   = stravaConnected && whoopConnected
 
+  function connectStrava() {
+    if (!stravaConnected) window.location.href = '/api/auth/strava/connect'
+  }
+
+  async function connectWhoop() {
+    if (whoopConnected) return
+    try {
+      const r = await fetch('/api/auth/whoop/url')
+      const { url } = await r.json()
+      window.location.href = url
+    } catch {
+      window.location.href = '/api/auth/whoop/connect'
+    }
+  }
+
   return (
     <div style={s.page}>
       <div style={s.card}>
@@ -112,10 +127,9 @@ export default function LoginPage({ authStatus }) {
         </p>
 
         <div style={s.buttons}>
-          <a
-            href={stravaConnected ? '#' : '/api/auth/strava/connect'}
-            style={s.btn('var(--accent)', stravaConnected)}
-            onClick={e => stravaConnected && e.preventDefault()}
+          <button
+            onClick={connectStrava}
+            style={{ ...s.btn('var(--accent)', stravaConnected), width: '100%', fontFamily: 'inherit' }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066z"/>
@@ -123,19 +137,18 @@ export default function LoginPage({ authStatus }) {
             </svg>
             {stravaConnected ? 'Strava Connected' : 'Connect Strava'}
             {stravaConnected && <span style={s.connectedBadge}>✓</span>}
-          </a>
+          </button>
 
-          <a
-            href={whoopConnected ? '#' : '/api/auth/whoop/connect'}
-            style={s.btn('var(--whoop)', whoopConnected)}
-            onClick={e => whoopConnected && e.preventDefault()}
+          <button
+            onClick={connectWhoop}
+            style={{ ...s.btn('var(--whoop)', whoopConnected), width: '100%', fontFamily: 'inherit' }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
             </svg>
             {whoopConnected ? 'WHOOP Connected' : 'Connect WHOOP'}
             {whoopConnected && <span style={s.connectedBadge}>✓</span>}
-          </a>
+          </button>
         </div>
 
         {bothConnected && (
@@ -143,7 +156,9 @@ export default function LoginPage({ authStatus }) {
             <div style={s.divider}>
               <div style={s.line} /> ready to go <div style={s.line} />
             </div>
-            <a href="/dashboard" style={s.goBtn}>Open Dashboard →</a>
+            <button onClick={() => window.location.href = '/'} style={{ ...s.goBtn, fontFamily: 'inherit' }}>
+              Open Dashboard →
+            </button>
           </>
         )}
 
