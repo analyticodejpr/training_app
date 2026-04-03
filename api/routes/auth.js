@@ -4,7 +4,30 @@ const crypto  = require('crypto');
 
 const router = express.Router();
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// ── WHOOP state: HMAC-signed token (no cookie/session storage needed) ─────────
+// Survives serverless cold-starts and cross-domain redirect chains.
+
+function makeWhoopState() {
+  const ts    = Date.now().toString(36);
+  const nonce = crypto.randomBytes(12).toString('hex');
+  const data  = `${ts}.${nonce}`;
+  const sig   = crypto.createHmac('sha256', process.env.SESSION_SECRET || 'dev-secret')
+                      .update(data).digest('hex').slice(0, 16);
+  return `${data}.${sig}`;
+}
+
+function verifyWhoopState(state) {
+  if (!state) return false;
+  const parts = state.split('.');
+  if (parts.length !== 3) return false;
+  const [ts, nonce, sig] = parts;
+  const data     = `${ts}.${nonce}`;
+  const expected = crypto.createHmac('sha256', process.env.SESSION_SECRET || 'dev-secret')
+                         .update(data).digest('hex').slice(0, 16);
+  if (sig !== expected) return false;
+  const age = Date.now() - parseInt(ts, 36);
+  return age < 15 * 60 * 1000; // 15-minute window
+}
 
 function makeWhoopParams(state) {
   return new URLSearchParams({
@@ -41,7 +64,6 @@ router.get('/strava/callback', async (req, res) => {
       grant_type: 'authorization_code',
     });
 
-    // Store tokens in the user's encrypted cookie session
     req.session.strava = {
       access_token:  data.access_token,
       refresh_token: data.refresh_token,
@@ -57,28 +79,11 @@ router.get('/strava/callback', async (req, res) => {
   }
 });
 
-router.get('/strava/url', (req, res) => {
-  const params = new URLSearchParams({
-    client_id:       process.env.STRAVA_CLIENT_ID,
-    redirect_uri:    process.env.STRAVA_REDIRECT_URI,
-    response_type:   'code',
-    approval_prompt: 'auto',
-    scope: 'read,activity:read_all,profile:read_all',
-  });
-  res.json({ url: `https://www.strava.com/oauth/authorize?${params}` });
-});
-
 // ── WHOOP OAuth ───────────────────────────────────────────────────────────────
 
 router.get('/whoop/connect', (req, res) => {
-  // Store CSRF state in session (per-user, not global)
-  req.session.whoopState = crypto.randomBytes(16).toString('hex');
-  res.redirect(`https://api.prod.whoop.com/oauth/oauth2/auth?${makeWhoopParams(req.session.whoopState)}`);
-});
-
-router.get('/whoop/url', (req, res) => {
-  req.session.whoopState = crypto.randomBytes(16).toString('hex');
-  res.json({ url: `https://api.prod.whoop.com/oauth/oauth2/auth?${makeWhoopParams(req.session.whoopState)}` });
+  const state = makeWhoopState();
+  res.redirect(`https://api.prod.whoop.com/oauth/oauth2/auth?${makeWhoopParams(state)}`);
 });
 
 router.get('/whoop/callback', async (req, res) => {
@@ -91,12 +96,9 @@ router.get('/whoop/callback', async (req, res) => {
     );
   }
 
-  if (!state || state !== req.session.whoopState) {
+  if (!verifyWhoopState(state)) {
     return res.redirect(`${process.env.FRONTEND_URL}/?error=whoop_denied&whoop_error=state_mismatch`);
   }
-
-  // Clear used state
-  req.session.whoopState = null;
 
   try {
     const params = new URLSearchParams({
@@ -113,7 +115,6 @@ router.get('/whoop/callback', async (req, res) => {
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
-    // Store tokens in the user's encrypted cookie session
     req.session.whoop = {
       access_token:  data.access_token,
       refresh_token: data.refresh_token,
