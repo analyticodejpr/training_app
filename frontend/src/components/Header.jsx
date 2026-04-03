@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { disconnectStrava, disconnectWhoop, getStravaAuthUrl, getWhoopAuthUrl } from '../utils/api'
+import { disconnectStrava, disconnectWhoop, connectStrava, connectWhoop } from '../utils/api'
 
 export default function Header({ authStatus, onDisconnect, theme, setTheme }) {
   const [confirming, setConfirming] = useState(null)
@@ -12,25 +12,6 @@ export default function Header({ authStatus, onDisconnect, theme, setTheme }) {
     onDisconnect?.()
   }
 
-  async function connectStrava() {
-    try {
-      const { url } = await getStravaAuthUrl()
-      if (!url) throw new Error('No URL returned')
-      window.location.href = url
-    } catch (err) {
-      alert(`Strava connect failed: ${err.message}`)
-    }
-  }
-
-  async function connectWhoop() {
-    try {
-      const { url } = await getWhoopAuthUrl()
-      if (!url) throw new Error('No URL returned')
-      window.location.href = url
-    } catch (err) {
-      alert(`WHOOP connect failed: ${err.message}`)
-    }
-  }
 
   const isLight = theme === 'light'
 

@@ -9,10 +9,12 @@ const api = axios.create({
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const getAuthStatus    = () => api.get('/auth/status').then(r => r.data)
-export const getStravaAuthUrl = () => api.get('/auth/strava/url').then(r => r.data)
-export const getWhoopAuthUrl  = () => api.get('/auth/whoop/url').then(r => r.data)
 export const disconnectStrava = () => api.delete('/auth/strava/disconnect')
 export const disconnectWhoop  = () => api.delete('/auth/whoop/disconnect')
+
+// Direct navigation — avoids cross-origin cookie issues with AJAX+redirect
+export const connectStrava = () => { window.location.href = `${BASE}/api/auth/strava/connect` }
+export const connectWhoop  = () => { window.location.href = `${BASE}/api/auth/whoop/connect` }
 
 // ── Strava ────────────────────────────────────────────────────────────────────
 export const getStravaAthlete    = () => api.get('/strava/athlete').then(r => r.data)

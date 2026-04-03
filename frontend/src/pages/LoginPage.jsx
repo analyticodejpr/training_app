@@ -96,34 +96,15 @@ const s = {
   },
 }
 
-import { getStravaAuthUrl, getWhoopAuthUrl } from '../utils/api'
+import { connectStrava as doConnectStrava, connectWhoop as doConnectWhoop } from '../utils/api'
 
 export default function LoginPage({ authStatus }) {
   const stravaConnected = authStatus?.strava
   const whoopConnected  = authStatus?.whoop
   const bothConnected   = stravaConnected && whoopConnected
 
-  async function connectStrava() {
-    if (stravaConnected) return
-    try {
-      const { url } = await getStravaAuthUrl()
-      if (!url) throw new Error('No URL returned')
-      window.location.href = url
-    } catch (err) {
-      alert(`Strava connect failed: ${err.message}`)
-    }
-  }
-
-  async function connectWhoop() {
-    if (whoopConnected) return
-    try {
-      const { url } = await getWhoopAuthUrl()
-      if (!url) throw new Error('No URL returned')
-      window.location.href = url
-    } catch (err) {
-      alert(`WHOOP connect failed: ${err.message}`)
-    }
-  }
+  function connectStrava() { if (!stravaConnected) doConnectStrava() }
+  function connectWhoop()  { if (!whoopConnected)  doConnectWhoop() }
 
   return (
     <div style={s.page}>
