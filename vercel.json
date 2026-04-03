@@ -5,7 +5,7 @@
       "src": "api/[...path].js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["frontend/dist/**"]
+        "includeFiles": ["api/dist/**"]
       }
     }
   ],

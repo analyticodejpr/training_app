@@ -51,8 +51,8 @@ app.get('/api/health', (_, res) => res.json({
   },
 }));
 
-// ── Serve frontend (bundled via includeFiles in vercel.json) ─────────────────
-const distDir = path.join(__dirname, '../frontend/dist');
+// ── Serve frontend (copied to api/dist by vercel-build script) ───────────────
+const distDir = path.join(__dirname, 'dist');
 app.use(express.static(distDir));
 app.get('*', (_, res) => res.sendFile(path.join(distDir, 'index.html')));
 
