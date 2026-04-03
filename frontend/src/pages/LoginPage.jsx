@@ -103,19 +103,27 @@ export default function LoginPage({ authStatus }) {
 
   async function connectStrava() {
     if (stravaConnected) return
-    const r = await fetch('/api/auth/strava/url')
-    const { url } = await r.json()
-    window.location.href = url
+    try {
+      const r = await fetch('/api/auth/strava/url')
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const body = await r.json()
+      if (!body.url) throw new Error('No URL returned')
+      window.location.href = body.url
+    } catch (err) {
+      alert(`Strava connect failed: ${err.message}\n\nCheck /api/health`)
+    }
   }
 
   async function connectWhoop() {
     if (whoopConnected) return
     try {
       const r = await fetch('/api/auth/whoop/url')
-      const { url } = await r.json()
-      window.location.href = url
-    } catch {
-      window.location.href = '/api/auth/whoop/connect'
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const body = await r.json()
+      if (!body.url) throw new Error('No URL returned')
+      window.location.href = body.url
+    } catch (err) {
+      alert(`WHOOP connect failed: ${err.message}\n\nCheck /api/health`)
     }
   }
 

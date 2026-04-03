@@ -13,15 +13,27 @@ export default function Header({ authStatus, onDisconnect, theme, setTheme }) {
   }
 
   async function connectStrava() {
-    const r = await fetch('/api/auth/strava/url')
-    const { url } = await r.json()
-    window.location.href = url
+    try {
+      const r = await fetch('/api/auth/strava/url')
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const body = await r.json()
+      if (!body.url) throw new Error('No URL returned')
+      window.location.href = body.url
+    } catch (err) {
+      alert(`Strava connect failed: ${err.message}\n\nCheck that the backend is reachable at /api/health`)
+    }
   }
 
   async function connectWhoop() {
-    const r = await fetch('/api/auth/whoop/url')
-    const { url } = await r.json()
-    window.location.href = url
+    try {
+      const r = await fetch('/api/auth/whoop/url')
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const body = await r.json()
+      if (!body.url) throw new Error('No URL returned')
+      window.location.href = body.url
+    } catch (err) {
+      alert(`WHOOP connect failed: ${err.message}\n\nCheck that the backend is reachable at /api/health`)
+    }
   }
 
   const isLight = theme === 'light'
