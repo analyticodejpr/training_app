@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { disconnectStrava, disconnectWhoop } from '../utils/api'
+import { disconnectStrava, disconnectWhoop, getStravaAuthUrl, getWhoopAuthUrl } from '../utils/api'
 
 export default function Header({ authStatus, onDisconnect, theme, setTheme }) {
   const [confirming, setConfirming] = useState(null)
@@ -14,25 +14,21 @@ export default function Header({ authStatus, onDisconnect, theme, setTheme }) {
 
   async function connectStrava() {
     try {
-      const r = await fetch('/api/auth/strava/url')
-      if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      const body = await r.json()
-      if (!body.url) throw new Error('No URL returned')
-      window.location.href = body.url
+      const { url } = await getStravaAuthUrl()
+      if (!url) throw new Error('No URL returned')
+      window.location.href = url
     } catch (err) {
-      alert(`Strava connect failed: ${err.message}\n\nCheck that the backend is reachable at /api/health`)
+      alert(`Strava connect failed: ${err.message}`)
     }
   }
 
   async function connectWhoop() {
     try {
-      const r = await fetch('/api/auth/whoop/url')
-      if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      const body = await r.json()
-      if (!body.url) throw new Error('No URL returned')
-      window.location.href = body.url
+      const { url } = await getWhoopAuthUrl()
+      if (!url) throw new Error('No URL returned')
+      window.location.href = url
     } catch (err) {
-      alert(`WHOOP connect failed: ${err.message}\n\nCheck that the backend is reachable at /api/health`)
+      alert(`WHOOP connect failed: ${err.message}`)
     }
   }
 

@@ -96,6 +96,8 @@ const s = {
   },
 }
 
+import { getStravaAuthUrl, getWhoopAuthUrl } from '../utils/api'
+
 export default function LoginPage({ authStatus }) {
   const stravaConnected = authStatus?.strava
   const whoopConnected  = authStatus?.whoop
@@ -104,26 +106,22 @@ export default function LoginPage({ authStatus }) {
   async function connectStrava() {
     if (stravaConnected) return
     try {
-      const r = await fetch('/api/auth/strava/url')
-      if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      const body = await r.json()
-      if (!body.url) throw new Error('No URL returned')
-      window.location.href = body.url
+      const { url } = await getStravaAuthUrl()
+      if (!url) throw new Error('No URL returned')
+      window.location.href = url
     } catch (err) {
-      alert(`Strava connect failed: ${err.message}\n\nCheck /api/health`)
+      alert(`Strava connect failed: ${err.message}`)
     }
   }
 
   async function connectWhoop() {
     if (whoopConnected) return
     try {
-      const r = await fetch('/api/auth/whoop/url')
-      if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      const body = await r.json()
-      if (!body.url) throw new Error('No URL returned')
-      window.location.href = body.url
+      const { url } = await getWhoopAuthUrl()
+      if (!url) throw new Error('No URL returned')
+      window.location.href = url
     } catch (err) {
-      alert(`WHOOP connect failed: ${err.message}\n\nCheck /api/health`)
+      alert(`WHOOP connect failed: ${err.message}`)
     }
   }
 

@@ -1,5 +1,4 @@
 require('dotenv').config();
-const path          = require('path');
 const express       = require('express');
 const cors          = require('cors');
 const cookieSession = require('cookie-session');
@@ -18,19 +17,19 @@ app.use(cors({
 }));
 
 // ── Cookie session ────────────────────────────────────────────────────────────
+const isProd = process.env.NODE_ENV === 'production';
 app.use(cookieSession({
   name: 'thsess',
   secret: process.env.SESSION_SECRET || 'dev-secret-change-in-prod',
   maxAge: 60 * 24 * 60 * 60 * 1000, // 60 days
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  secure: isProd,
+  sameSite: isProd ? 'none' : 'lax', // 'none' required for cross-origin cookies
 }));
 
 app.use(express.json());
 
 // ── Routes ────────────────────────────────────────────────────────────────────
-// Mount under /api so both local dev (proxied) and Vercel (full path) work.
 app.use('/api/auth',   authRoutes);
 app.use('/api/strava', stravaLimiter, stravaRoutes);
 app.use('/api/whoop',  whoopLimiter,  whoopRoutes);
@@ -50,10 +49,5 @@ app.get('/api/health', (_, res) => res.json({
     FRONTEND_URL:         !!process.env.FRONTEND_URL,
   },
 }));
-
-// ── Serve frontend (copied to api/dist by vercel-build script) ───────────────
-const distDir = path.join(__dirname, 'dist');
-app.use(express.static(distDir));
-app.get('*', (_, res) => res.sendFile(path.join(distDir, 'index.html')));
 
 module.exports = app;
