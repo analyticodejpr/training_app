@@ -16,9 +16,7 @@ app.use(cors({
   credentials: true,
 }));
 
-// ── Cookie session — tokens stored encrypted in browser cookie ────────────────
-// Each user's Strava + WHOOP tokens live in their own signed cookie.
-// No server-side storage required → works on serverless (Vercel).
+// ── Cookie session ────────────────────────────────────────────────────────────
 app.use(cookieSession({
   name: 'thsess',
   secret: process.env.SESSION_SECRET || 'dev-secret-change-in-prod',
@@ -30,13 +28,14 @@ app.use(cookieSession({
 
 app.use(express.json());
 
-// ── Routes (no /api prefix — Vercel strips it via routePrefix: "/api") ────────
-app.use('/auth',   authRoutes);
-app.use('/strava', stravaLimiter, stravaRoutes);
-app.use('/whoop',  whoopLimiter,  whoopRoutes);
+// ── Routes ────────────────────────────────────────────────────────────────────
+// Mount under /api so both local dev (proxied) and Vercel (full path) work.
+app.use('/api/auth',   authRoutes);
+app.use('/api/strava', stravaLimiter, stravaRoutes);
+app.use('/api/whoop',  whoopLimiter,  whoopRoutes);
 
-// ── Health check + env var status ────────────────────────────────────────────
-app.get('/health', (_, res) => res.json({
+// ── Health check ──────────────────────────────────────────────────────────────
+app.get('/api/health', (_, res) => res.json({
   ok: true,
   ts: new Date().toISOString(),
   env: {
