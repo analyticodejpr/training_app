@@ -28,6 +28,9 @@ export default function SleepMatrixChart({ daily = [], count = 14 }) {
         <span style={subtitle}>Stage composition · last {count} nights with data</span>
       </div>
 
+      <div className="sleep-scroll">
+      <div className="sleep-scroll-inner">
+
       {/* Column headers */}
       <div style={{ ...rowLayout, marginBottom: 6, paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
         <span style={colDate}>Date</span>
@@ -99,6 +102,8 @@ export default function SleepMatrixChart({ daily = [], count = 14 }) {
           )
         })}
       </div>
+      </div>{/* sleep-scroll-inner */}
+      </div>{/* sleep-scroll */}
     </div>
   )
 }

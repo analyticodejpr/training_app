@@ -13,7 +13,7 @@ export default function Nav() {
   const location = useLocation()
 
   return (
-    <div style={wrapper} className="glass">
+    <div style={wrapper} className="glass nav-wrapper">
       <div style={inner} className="nav-inner">
         {/* Page tabs — segmented pill style */}
         <nav style={navLinks} className="nav-links">
@@ -36,6 +36,7 @@ export default function Nav() {
               key={p.key}
               onClick={() => setPeriod(p.key)}
               style={periodBtn(p.key === period)}
+              className="period-btn"
             >
               {p.label}
             </button>

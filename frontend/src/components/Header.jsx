@@ -16,11 +16,11 @@ export default function Header({ authStatus, onDisconnect, theme, setTheme }) {
   const isLight = theme === 'light'
 
   return (
-    <header style={header}>
+    <header style={header} className="header-safe">
       {/* Premium 2px accent gradient line at top */}
       <div style={accentLine} />
 
-      <div style={inner}>
+      <div style={inner} className="header-inner">
         {/* Brand */}
         <div style={logo}>
           <div style={logoMark}>
@@ -60,6 +60,7 @@ export default function Header({ authStatus, onDisconnect, theme, setTheme }) {
             onClick={() => setTheme(isLight ? 'dark' : 'light')}
             title={isLight ? 'Dark mode' : 'Light mode'}
             style={themeBtn}
+            className="theme-btn"
           >
             {isLight ? (
               /* Moon icon */

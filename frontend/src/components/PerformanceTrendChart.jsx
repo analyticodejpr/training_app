@@ -82,7 +82,7 @@ export default function PerformanceTrendChart({ activities = [] }) {
         <span style={subtitle}>Weekly averages · 4-week rolling trend · lower pace = faster</span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: hasRuns && hasRides ? '1fr 1fr' : '1fr', gap: 20 }}>
+      <div className="perf-trend-grid" style={{ display: 'grid', gridTemplateColumns: hasRuns && hasRides ? '1fr 1fr' : '1fr', gap: 20 }}>
         {hasRuns && (
           <div>
             <div style={subTitle}>Run pace (min/km)</div>

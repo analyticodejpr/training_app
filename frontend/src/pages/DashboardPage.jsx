@@ -151,8 +151,8 @@ function RecoveryHero({ latest, prev, base28 }) {
         flexWrap: 'wrap',
       }}>
         {/* ── Left: recovery focal point ── */}
-        <div style={{
-          padding: 'clamp(16px, 4vw, 28px) clamp(16px, 5vw, 36px)',
+        <div className="hero-left" style={{
+          padding: '28px 36px',
           display: 'flex', flexDirection: 'column',
           justifyContent: 'center',
           minWidth: 160,
@@ -167,8 +167,8 @@ function RecoveryHero({ latest, prev, base28 }) {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, lineHeight: 1 }}>
-            <span className="metric-mono" style={{
-              fontSize: 'clamp(52px, 12vw, 80px)', fontWeight: 800,
+            <span className="metric-mono hero-score" style={{
+              fontSize: 80, fontWeight: 800,
               color: recColor, lineHeight: 1,
               letterSpacing: '-4px',
             }}>
@@ -255,9 +255,9 @@ function RecoveryHero({ latest, prev, base28 }) {
 
 function CompanionCell({ label, value, unit, color, delta, deltaGood, sub }) {
   return (
-    <div style={{
+    <div className="companion-cell" style={{
       background: 'var(--surface)',
-      padding: 'clamp(12px, 3vw, 18px) clamp(12px, 4vw, 22px)',
+      padding: '18px 22px',
     }}>
       <div style={{
         fontSize: 9, fontWeight: 700, color: 'var(--text-muted)',
@@ -267,7 +267,7 @@ function CompanionCell({ label, value, unit, color, delta, deltaGood, sub }) {
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
         <span className="metric-mono" style={{
-          fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 800,
+          fontSize: 30, fontWeight: 800,
           color: color || 'var(--text)',
           lineHeight: 1, letterSpacing: '-0.5px',
         }}>
