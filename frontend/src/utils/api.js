@@ -35,14 +35,17 @@ export const disconnectStrava = () =>
 export const disconnectWhoop = () =>
   api.delete('/auth/whoop/disconnect').then(r => { if (r.data.token) saveToken(r.data.token) })
 
-// Direct navigation to backend /connect — no CORS, no cookies needed
+// Direct navigation to backend /connect — pass existing token so the callback
+// can merge the new platform into the existing session (not overwrite it).
 export const connectStrava = () => {
   if (!BASE) { alert('VITE_API_URL is not set in the frontend Vercel project env vars.'); return }
-  window.location.href = `${BASE}/api/auth/strava/connect`
+  const t = getStoredToken()
+  window.location.href = `${BASE}/api/auth/strava/connect${t ? `?t=${encodeURIComponent(t)}` : ''}`
 }
 export const connectWhoop = () => {
   if (!BASE) { alert('VITE_API_URL is not set in the frontend Vercel project env vars.'); return }
-  window.location.href = `${BASE}/api/auth/whoop/connect`
+  const t = getStoredToken()
+  window.location.href = `${BASE}/api/auth/whoop/connect${t ? `?t=${encodeURIComponent(t)}` : ''}`
 }
 
 // ── Strava ────────────────────────────────────────────────────────────────────

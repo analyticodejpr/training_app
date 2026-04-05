@@ -1,45 +1,51 @@
 const express  = require('express');
 const axios    = require('axios');
 const crypto   = require('crypto');
-const { encrypt } = require('../tokenCrypto');
+const { encrypt, decrypt } = require('../tokenCrypto');
 
 const router = express.Router();
 
-// ── WHOOP state: HMAC-signed (no server-side storage needed) ─────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makeWhoopState() {
+// WHOOP CSRF: HMAC-signed ts.nonce — survives serverless cold-starts.
+function makeHmacState() {
   const ts    = Date.now().toString(36);
   const nonce = crypto.randomBytes(12).toString('hex');
   const data  = `${ts}.${nonce}`;
   const sig   = crypto.createHmac('sha256', process.env.SESSION_SECRET || 'dev-secret')
                       .update(data).digest('hex').slice(0, 16);
-  return `${data}.${sig}`;
+  return `${ts}.${nonce}.${sig}`;
 }
 
-function verifyWhoopState(state) {
-  if (!state) return false;
-  const parts = state.split('.');
+function verifyHmacState(hmacPart) {
+  if (!hmacPart) return false;
+  const parts = hmacPart.split('.');
   if (parts.length !== 3) return false;
   const [ts, nonce, sig] = parts;
-  const data     = `${ts}.${nonce}`;
   const expected = crypto.createHmac('sha256', process.env.SESSION_SECRET || 'dev-secret')
-                         .update(data).digest('hex').slice(0, 16);
+                         .update(`${ts}.${nonce}`).digest('hex').slice(0, 16);
   if (sig !== expected) return false;
   return (Date.now() - parseInt(ts, 36)) < 15 * 60 * 1000;
 }
 
-function makeWhoopParams(state) {
-  return new URLSearchParams({
-    client_id:     process.env.WHOOP_CLIENT_ID,
-    redirect_uri:  process.env.WHOOP_REDIRECT_URI,
-    response_type: 'code',
-    scope: 'read:profile read:body_measurement read:cycles read:recovery read:sleep read:workout offline',
-    state,
-  });
+// Encode existing session token into state so callback can merge sessions.
+// Format: "<hmac_or_platform>|<existing_token_or_empty>"
+function encodeState(hmacPart, existingToken) {
+  return `${hmacPart}|${existingToken || ''}`;
 }
 
-// Helper: redirect to frontend with encrypted session token in URL hash.
-// The hash (#) is never sent to any server — only the browser reads it.
+function decodeState(state) {
+  const idx = state.lastIndexOf('|');
+  if (idx === -1) return { hmacPart: state, existingToken: '' };
+  return { hmacPart: state.slice(0, idx), existingToken: state.slice(idx + 1) };
+}
+
+// Merge new platform data into existing session (if any).
+function mergeSession(existingToken, newData) {
+  const existing = existingToken ? (decrypt(existingToken) || {}) : {};
+  return { ...existing, ...newData };
+}
+
 function redirectWithToken(res, session, platform) {
   const token = encrypt(session);
   res.redirect(`${process.env.FRONTEND_URL}/?connected=${platform}#tok=${token}`);
@@ -48,19 +54,23 @@ function redirectWithToken(res, session, platform) {
 // ── Strava OAuth ──────────────────────────────────────────────────────────────
 
 router.get('/strava/connect', (req, res) => {
+  const state = encodeState('strava', req.query.t || '');
   const params = new URLSearchParams({
     client_id:       process.env.STRAVA_CLIENT_ID,
     redirect_uri:    process.env.STRAVA_REDIRECT_URI,
     response_type:   'code',
     approval_prompt: 'auto',
-    scope: 'read,activity:read_all,profile:read_all',
+    scope:           'read,activity:read_all,profile:read_all',
+    state,
   });
   res.redirect(`https://www.strava.com/oauth/authorize?${params}`);
 });
 
 router.get('/strava/callback', async (req, res) => {
-  const { code, error } = req.query;
+  const { code, error, state } = req.query;
   if (error) return res.redirect(`${process.env.FRONTEND_URL}/?error=strava_denied`);
+
+  const { existingToken } = decodeState(state || '');
 
   try {
     const { data } = await axios.post('https://www.strava.com/oauth/token', {
@@ -70,8 +80,7 @@ router.get('/strava/callback', async (req, res) => {
       grant_type: 'authorization_code',
     });
 
-    const session = {
-      ...req.session,
+    const session = mergeSession(existingToken, {
       strava: {
         access_token:  data.access_token,
         refresh_token: data.refresh_token,
@@ -79,7 +88,7 @@ router.get('/strava/callback', async (req, res) => {
         athlete_id:    String(data.athlete?.id || ''),
         scope:         data.scope || '',
       },
-    };
+    });
 
     redirectWithToken(res, session, 'strava');
   } catch (err) {
@@ -91,8 +100,16 @@ router.get('/strava/callback', async (req, res) => {
 // ── WHOOP OAuth ───────────────────────────────────────────────────────────────
 
 router.get('/whoop/connect', (req, res) => {
-  const state = makeWhoopState();
-  res.redirect(`https://api.prod.whoop.com/oauth/oauth2/auth?${makeWhoopParams(state)}`);
+  const hmac  = makeHmacState();
+  const state = encodeState(hmac, req.query.t || '');
+  const params = new URLSearchParams({
+    client_id:     process.env.WHOOP_CLIENT_ID,
+    redirect_uri:  process.env.WHOOP_REDIRECT_URI,
+    response_type: 'code',
+    scope: 'read:profile read:body_measurement read:cycles read:recovery read:sleep read:workout offline',
+    state,
+  });
+  res.redirect(`https://api.prod.whoop.com/oauth/oauth2/auth?${params}`);
 });
 
 router.get('/whoop/callback', async (req, res) => {
@@ -104,7 +121,8 @@ router.get('/whoop/callback', async (req, res) => {
     );
   }
 
-  if (!verifyWhoopState(state)) {
+  const { hmacPart, existingToken } = decodeState(state || '');
+  if (!verifyHmacState(hmacPart)) {
     return res.redirect(`${process.env.FRONTEND_URL}/?error=whoop_denied&whoop_error=state_mismatch`);
   }
 
@@ -123,15 +141,14 @@ router.get('/whoop/callback', async (req, res) => {
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
-    const session = {
-      ...req.session,
+    const session = mergeSession(existingToken, {
       whoop: {
         access_token:  data.access_token,
         refresh_token: data.refresh_token,
         expires_at:    Math.floor(Date.now() / 1000) + (data.expires_in || 3600),
         scope:         data.scope || '',
       },
-    };
+    });
 
     redirectWithToken(res, session, 'whoop');
   } catch (err) {
@@ -149,7 +166,6 @@ router.get('/status', (req, res) => {
   });
 });
 
-// Disconnect: return a new encrypted token with that platform removed
 router.delete('/strava/disconnect', (req, res) => {
   const session = { ...req.session, strava: null };
   res.json({ ok: true, token: encrypt(session) });
