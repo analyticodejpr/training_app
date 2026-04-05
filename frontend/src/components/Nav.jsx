@@ -14,15 +14,15 @@ export default function Nav() {
 
   return (
     <div style={wrapper} className="glass">
-      <div style={inner}>
+      <div style={inner} className="nav-inner">
         {/* Page tabs — segmented pill style */}
-        <nav style={navLinks}>
+        <nav style={navLinks} className="nav-links">
           {NAV_LINKS.map(({ to, label }) => {
             const isActive = to === '/'
               ? location.pathname === '/'
               : location.pathname.startsWith(to)
             return (
-              <NavLink key={to} to={to} style={linkStyle(isActive)}>
+              <NavLink key={to} to={to} style={linkStyle(isActive)} className="nav-link">
                 {label}
               </NavLink>
             )
@@ -30,7 +30,7 @@ export default function Nav() {
         </nav>
 
         {/* Date range — compact segmented bar */}
-        <div style={periodBar}>
+        <div style={periodBar} className="period-bar">
           {PERIODS.map(p => (
             <button
               key={p.key}
@@ -49,7 +49,7 @@ export default function Nav() {
 const wrapper = {
   borderBottom: '1px solid var(--border)',
   position: 'sticky',
-  top: 54,   /* header height (52) + accent line (2) */
+  top: 54,   /* header height (52px) + accent line (2px) */
   zIndex: 90,
 }
 

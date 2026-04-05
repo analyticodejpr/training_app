@@ -30,7 +30,7 @@ export const GRID_STYLE = {
 
 export function PageWrapper({ children }) {
   return (
-    <main style={pageStyle} className="fade-up">
+    <main style={pageStyle} className="fade-up page-wrapper">
       {children}
     </main>
   )
@@ -38,7 +38,7 @@ export function PageWrapper({ children }) {
 
 export function TwoCol({ children }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', gap: 16 }}>
+    <div className="two-col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16 }}>
       {children}
     </div>
   )
@@ -54,7 +54,7 @@ export function TwoCol({ children }) {
 export function Card({ children, glow, noPad, style }) {
   return (
     <div
-      className="card-premium"
+      className={`card-premium${noPad ? '' : ' card'}`}
       style={{
         background: 'var(--surface)',
         border: '1px solid var(--border)',

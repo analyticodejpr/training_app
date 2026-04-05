@@ -12,7 +12,7 @@ const s = {
     background: 'var(--surface)',
     border: '1px solid var(--border)',
     borderRadius: 20,
-    padding: '48px 40px',
+    padding: 'clamp(24px, 6vw, 48px) clamp(20px, 6vw, 40px)',
     maxWidth: 440,
     width: '100%',
     textAlign: 'center',

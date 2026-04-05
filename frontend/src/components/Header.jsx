@@ -88,6 +88,7 @@ function PlatformPill({ label, connected, confirming, color, onConnect, onDiscon
     <button
       onClick={connected ? onDisconnect : onConnect}
       title={connected && confirming ? 'Click again to disconnect' : undefined}
+      className="header-pill"
       style={{
         display: 'flex', alignItems: 'center', gap: 6,
         padding: '5px 13px', borderRadius: 999,
@@ -97,6 +98,8 @@ function PlatformPill({ label, connected, confirming, color, onConnect, onDiscon
         color: connected ? color : 'var(--text-muted)',
         transition: 'all 0.18s',
         fontFamily: 'inherit',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
       }}
     >
       <span style={{
@@ -135,6 +138,7 @@ const inner = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
+  minWidth: 0,
 }
 
 const logo = {
@@ -156,9 +160,9 @@ const logoText = {
   color: 'var(--text)',
 }
 
-const right = { display: 'flex', alignItems: 'center', gap: 10 }
+const right = { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }
 
-const pills = { display: 'flex', alignItems: 'center', gap: 7 }
+const pills = { display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }
 
 const themeBtn = {
   width: 34, height: 34, borderRadius: 9,

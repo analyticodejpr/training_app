@@ -48,8 +48,12 @@ export default function HeatmapCalendar({ whoopDaily = [], activities = [] }) {
     <div>
       <div style={titleRow}>
         <span style={title}>Training + Recovery Calendar</span>
-        <span style={subtitle}>Fill intensity = strain · border = recovery zone · hover for details</span>
+        <span style={subtitle}>Fill = strain · border = recovery zone</span>
       </div>
+
+      {/* Horizontally scrollable on mobile so cells stay readable */}
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <div style={{ minWidth: 320 }}>
 
       {/* Day labels */}
       <div style={dayLabelRow}>
@@ -126,6 +130,8 @@ export default function HeatmapCalendar({ whoopDaily = [], activities = [] }) {
           </div>
         ))}
       </div>
+
+      </div></div>{/* end scroll wrapper */}
 
       {/* Legend */}
       <div style={legendRow}>
