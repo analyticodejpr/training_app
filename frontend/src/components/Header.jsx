@@ -23,12 +23,7 @@ export default function Header({ authStatus, onDisconnect, theme, setTheme }) {
       <div style={inner} className="header-inner">
         {/* Brand */}
         <div style={logo}>
-          <div style={logoMark}>
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <path d="M7.5 1L2 7.5h4.5L5 12l6.5-7h-4.5L7.5 1z"
-                fill="#ff5500" strokeLinejoin="round" />
-            </svg>
-          </div>
+          <img src="/logo.svg" alt="TrainingHub" width="28" height="28" style={{ borderRadius: 8, flexShrink: 0 }} />
           <span style={logoText}>
             Training<span style={{ color: 'var(--accent)' }}>Hub</span>
           </span>
@@ -144,15 +139,6 @@ const inner = {
 
 const logo = {
   display: 'flex', alignItems: 'center', gap: 10,
-}
-
-const logoMark = {
-  width: 28, height: 28,
-  borderRadius: 8,
-  background: 'rgba(255,85,0,0.12)',
-  border: '1px solid rgba(255,85,0,0.25)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  boxShadow: '0 0 12px rgba(255,85,0,0.2)',
 }
 
 const logoText = {

@@ -69,23 +69,23 @@ export default function WeeklyCompositionChart({ activities = [] }) {
     <div>
       <div style={titleRow}>
         <span style={title}>Weekly Training Composition</span>
-        <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
-          {(['time', 'distance']).map(m => (
-            <button key={m} onClick={() => setMetric(m)} style={toggleBtn(metric === m)}>
-              {m === 'time' ? 'Time' : 'Distance'}
-            </button>
-          ))}
-        </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={240}>
-        <ComposedChart data={chartData} margin={{ top: 8, right: 48, left: 0, bottom: 0 }}>
+      {/* Toggle sits on its own row — doesn't shrink the chart */}
+      <div style={toggleRow}>
+        {(['time', 'distance']).map(m => (
+          <button key={m} onClick={() => setMetric(m)} style={toggleBtn(metric === m)}>
+            {m === 'time' ? 'Time' : 'Distance'}
+          </button>
+        ))}
+      </div>
+
+      <ResponsiveContainer width="100%" height={300}>
+        <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
           <XAxis dataKey="week" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-          <YAxis yAxisId="vol"  tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false}
-            label={{ value: unit, angle: -90, position: 'insideLeft', fill: 'var(--text-muted)', fontSize: 10 }} />
-          <YAxis yAxisId="cnt" orientation="right" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false}
-            label={{ value: 'sessions', angle: 90, position: 'insideRight', fill: 'var(--text-muted)', fontSize: 10 }} />
+          <YAxis yAxisId="vol" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={32} />
+          <YAxis yAxisId="cnt" orientation="right" tick={false} axisLine={false} tickLine={false} width={1} />
           <Tooltip content={<CustomTooltip metric={metric} />} />
           <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
 
@@ -108,11 +108,13 @@ function EmptyState() {
   return <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No activity data available.</div>
 }
 
-const titleRow = { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }
-const title    = { fontSize: 13, fontWeight: 700, color: 'var(--text)' }
+const titleRow  = { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }
+const title     = { fontSize: 13, fontWeight: 700, color: 'var(--text)' }
+const toggleRow = { display: 'flex', gap: 6, marginBottom: 12 }
 const toggleBtn = (active) => ({
-  padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+  padding: '6px 16px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer',
   border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
   background: active ? 'var(--accent)' : 'transparent',
   color: active ? '#fff' : 'var(--text-muted)', transition: 'all 0.15s',
+  fontFamily: 'inherit', minHeight: 32,
 })
