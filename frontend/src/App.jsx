@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { getAuthStatus } from './utils/api'
+import { getAuthStatus, saveToken } from './utils/api'
 import { DateRangeProvider } from './context/DateRangeContext'
 import Header from './components/Header'
 import Nav    from './components/Nav'
@@ -35,7 +35,16 @@ export default function App() {
   }
 
   useEffect(() => {
+    // Extract encrypted session token from URL hash (#tok=...) after OAuth redirect
+    const hash = window.location.hash
+    if (hash.includes('tok=')) {
+      const token = new URLSearchParams(hash.slice(1)).get('tok')
+      if (token) saveToken(token)
+      window.history.replaceState({}, '', window.location.pathname + window.location.search)
+    }
+
     fetchStatus()
+
     const params = new URLSearchParams(window.location.search)
     if (params.has('error')) {
       const whoopErr  = params.get('whoop_error') || ''

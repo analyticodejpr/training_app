@@ -1,7 +1,7 @@
 require('dotenv').config();
-const express       = require('express');
-const cors          = require('cors');
-const cookieSession = require('cookie-session');
+const express    = require('express');
+const cors       = require('cors');
+const { decrypt } = require('./tokenCrypto');
 
 const authRoutes   = require('./routes/auth');
 const stravaRoutes = require('./routes/strava');
@@ -9,6 +9,7 @@ const whoopRoutes  = require('./routes/whoop');
 const { stravaLimiter, whoopLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 app.use(cors({
@@ -16,18 +17,22 @@ app.use(cors({
   credentials: true,
 }));
 
-// ── Cookie session ────────────────────────────────────────────────────────────
-const isProd = process.env.NODE_ENV === 'production';
-app.use(cookieSession({
-  name: 'thsess',
-  secret: process.env.SESSION_SECRET || 'dev-secret-change-in-prod',
-  maxAge: 60 * 24 * 60 * 60 * 1000, // 60 days
-  httpOnly: true,
-  secure: isProd,
-  sameSite: isProd ? 'none' : 'lax', // 'none' required for cross-origin cookies
-}));
-
 app.use(express.json());
+
+// ── Session from Bearer token ─────────────────────────────────────────────────
+// The frontend stores an encrypted session token in localStorage and sends it
+// as "Authorization: Bearer <token>" on every request. We decrypt it here and
+// attach the result to req.session so routes work the same way as before.
+app.use((req, res, next) => {
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  req.session = token ? (decrypt(token) || {}) : {};
+  // Provide a way for auth routes to send back an updated token
+  res.setSession = (data) => {
+    res.setHeader('X-Session-Token', require('./tokenCrypto').encrypt(data));
+  };
+  next();
+});
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth',   authRoutes);

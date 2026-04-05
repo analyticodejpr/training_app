@@ -2,23 +2,46 @@ import axios from 'axios'
 
 const BASE = import.meta.env.VITE_API_URL || ''
 
-const api = axios.create({
-  baseURL: `${BASE}/api`,
-  withCredentials: true,
+// ── Session token (stored in localStorage, sent as Bearer header) ─────────────
+
+export function getStoredToken() {
+  return localStorage.getItem('th_session') || ''
+}
+
+export function saveToken(token) {
+  if (token) localStorage.setItem('th_session', token)
+}
+
+export function clearToken() {
+  localStorage.removeItem('th_session')
+}
+
+// ── Axios instance ────────────────────────────────────────────────────────────
+
+const api = axios.create({ baseURL: `${BASE}/api` })
+
+api.interceptors.request.use(config => {
+  const token = getStoredToken()
+  if (token) config.headers['Authorization'] = `Bearer ${token}`
+  return config
 })
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-export const getAuthStatus    = () => api.get('/auth/status').then(r => r.data)
-export const disconnectStrava = () => api.delete('/auth/strava/disconnect')
-export const disconnectWhoop  = () => api.delete('/auth/whoop/disconnect')
+export const getAuthStatus = () => api.get('/auth/status').then(r => r.data)
 
-// Direct navigation — avoids cross-origin cookie issues with AJAX+redirect
+export const disconnectStrava = () =>
+  api.delete('/auth/strava/disconnect').then(r => { if (r.data.token) saveToken(r.data.token) })
+
+export const disconnectWhoop = () =>
+  api.delete('/auth/whoop/disconnect').then(r => { if (r.data.token) saveToken(r.data.token) })
+
+// Direct navigation to backend /connect — no CORS, no cookies needed
 export const connectStrava = () => {
-  if (!BASE) { alert('VITE_API_URL is not set. Add it to your frontend Vercel project env vars and redeploy.'); return }
+  if (!BASE) { alert('VITE_API_URL is not set in the frontend Vercel project env vars.'); return }
   window.location.href = `${BASE}/api/auth/strava/connect`
 }
 export const connectWhoop = () => {
-  if (!BASE) { alert('VITE_API_URL is not set. Add it to your frontend Vercel project env vars and redeploy.'); return }
+  if (!BASE) { alert('VITE_API_URL is not set in the frontend Vercel project env vars.'); return }
   window.location.href = `${BASE}/api/auth/whoop/connect`
 }
 
