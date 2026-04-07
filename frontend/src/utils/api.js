@@ -26,6 +26,12 @@ api.interceptors.request.use(config => {
   return config
 })
 
+api.interceptors.response.use(response => {
+  const newToken = response.headers['x-session-token']
+  if (newToken) saveToken(newToken)
+  return response
+})
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const getAuthStatus = () => api.get('/auth/status').then(r => r.data)
 

@@ -3,17 +3,21 @@ const whoop   = require('../services/whoopService');
 
 const router = express.Router();
 
-function makeTokenStore(req) {
+function makeTokenStore(req, res) {
   return {
     get:  (provider) => req.session[provider] || null,
-    save: (provider, data) => { req.session[provider] = data; },
+    save: (provider, data) => {
+      req.session[provider] = data;
+      // Re-encrypt full session and send back so frontend can persist the refreshed token
+      res.setSession({ ...req.session, [provider]: data });
+    },
   };
 }
 
 function handle(fn) {
   return async (req, res) => {
     try {
-      const data = await fn(req, makeTokenStore(req));
+      const data = await fn(req, makeTokenStore(req, res));
       res.json(data);
     } catch (err) {
       const status = err.message.includes('not connected') ? 401 : 500;
