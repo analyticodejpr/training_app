@@ -14,37 +14,22 @@ import { useCurrentWeekSchedule } from '../hooks/usePlanner'
 import { NumberTicker } from '../components/ui/number-ticker'
 import { AnimatedCircularProgressBar } from '../components/ui/animated-circular-progress-bar'
 import { useSupabaseMetrics }    from '../hooks/useSupabaseMetrics'
-import { useSupabaseActivities } from '../hooks/useSupabaseActivities'
 import { useDateRange } from '../context/DateRangeContext'
-import { buildDailyGrain } from '../utils/metrics'
 import { recoveryColor, strainColor, msToHHMM } from '../utils/format'
 import {
-  PageWrapper, Panel, PanelHeader, TwoCol,
+  PageWrapper, Panel, PanelHeader,
   EmptyNote, Loader,
 } from '../components/ui'
-import SmallMultiplesPanel from '../components/SmallMultiplesPanel'
-import QuadrantScatter     from '../components/QuadrantScatter'
-import AcuteChronicChart   from '../components/AcuteChronicChart'
-import HeatmapCalendar     from '../components/HeatmapCalendar'
-import ActivityList        from '../components/ActivityList'
-import ConnectCard         from '../components/ConnectCard'
-import StravaImportPanel   from '../components/StravaImportPanel'
-import WhoopImportPanel    from '../components/WhoopImportPanel'
+import SmallMultiplesPanel    from '../components/SmallMultiplesPanel'
+import RecoveryDriversChart   from '../components/RecoveryDriversChart'
 
 export default function DashboardPage({ authStatus }) {
-  const { filterByDate, filterActivities, label: periodLabel } = useDateRange()
+  const { filterByDate, label: periodLabel } = useDateRange()
 
   // Reads from Supabase daily_metrics — not live WHOOP API
-  const { daily: whoopAll, loading: wLoading } = useSupabaseMetrics(!!authStatus?.whoop, 90)
-  const { activities: actsAll, loading: sLoading } = useSupabaseActivities(!!authStatus?.strava, 150)
+  const { daily: whoopAll, loading } = useSupabaseMetrics(!!authStatus?.whoop, 90)
 
-  const loading = wLoading || sLoading
-
-  const whoopFiltered = useMemo(() => filterByDate(whoopAll),    [whoopAll, filterByDate])
-  const actsFiltered  = useMemo(() => filterActivities(actsAll), [actsAll, filterActivities])
-
-  const dailyGrain         = useMemo(() => buildDailyGrain(whoopAll, actsAll),           [whoopAll, actsAll])
-  const dailyGrainFiltered = useMemo(() => buildDailyGrain(whoopFiltered, actsFiltered), [whoopFiltered, actsFiltered])
+  const whoopFiltered = useMemo(() => filterByDate(whoopAll), [whoopAll, filterByDate])
 
   const latest = whoopAll.length ? whoopAll[whoopAll.length - 1] : null
   const prev   = whoopAll.length > 1 ? whoopAll[whoopAll.length - 2] : null
@@ -60,8 +45,6 @@ export default function DashboardPage({ authStatus }) {
   }, [whoopAll])
 
   if (loading) return <Loader />
-
-  const anyConnected = authStatus?.strava || authStatus?.whoop
 
   // ── Derived KPI values ─────────────────────────────────────────────────────
   const rec   = latest?.recovery_score
@@ -87,19 +70,8 @@ export default function DashboardPage({ authStatus }) {
   return (
     <PageWrapper>
 
-      {/* ── Sync bars ── */}
-      {authStatus?.whoop  && <WhoopImportPanel />}
-      {authStatus?.strava && <StravaImportPanel />}
-
       {/* ── Zone 1: KPI row ── */}
-      {!anyConnected ? (
-        <BothConnectCard />
-      ) : !authStatus?.whoop ? (
-        <ConnectCard
-          platform="WHOOP"
-          message="Connect WHOOP to see your recovery, HRV, sleep and strain."
-        />
-      ) : (
+      {authStatus?.whoop && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <KPICard
             eyebrow="Recovery"
@@ -136,55 +108,32 @@ export default function DashboardPage({ authStatus }) {
         </div>
       )}
 
-      {/* ── Zone 2: Trends (2/3) + Scatter (1/3) ── */}
+      {/* ── Zone 2: Trends ── */}
       {authStatus?.whoop && (
-        <TwoCol ratio="2:1">
-          <Panel pad="flush">
-            <div style={{ padding: '20px 24px 14px' }}>
-              <PanelHeader label={periodLabel} title="Trends" bottom={0} />
-            </div>
-            {whoopFiltered.length > 1
-              ? <SmallMultiplesPanel data={whoopFiltered} />
-              : <div style={{ padding: '0 24px 20px' }}>
-                  <EmptyNote>No WHOOP data for this period. Try a wider range.</EmptyNote>
-                </div>}
-          </Panel>
-          <Panel>
-            <QuadrantScatter
-              daily={whoopFiltered}
-              dailyGrain={dailyGrainFiltered}
-            />
-          </Panel>
-        </TwoCol>
-      )}
-
-      {/* ── Zone 3: Acute vs Chronic ── */}
-      {authStatus?.whoop && (
-        <Panel>
-          <AcuteChronicChart daily={whoopAll} dailyGrain={dailyGrain} />
+        <Panel pad="flush">
+          <div style={{ padding: '20px 24px 14px' }}>
+            <PanelHeader label={periodLabel} title="Trends" bottom={0} />
+          </div>
+          {whoopFiltered.length > 1
+            ? <SmallMultiplesPanel data={whoopFiltered} />
+            : <div style={{ padding: '0 24px 20px' }}>
+                <EmptyNote>No WHOOP data for this period. Try a wider range.</EmptyNote>
+              </div>}
         </Panel>
       )}
 
-      {/* ── Zone 4: Heatmap Calendar ── */}
-      <Panel>
-        <HeatmapCalendar whoopDaily={whoopAll} activities={actsAll} />
-        {!anyConnected && (
-          <EmptyNote>Connect Strava or WHOOP to populate the calendar.</EmptyNote>
-        )}
-      </Panel>
-
-      {/* ── Zone 5: Recent Activities ── */}
-      {authStatus?.strava && actsAll.length > 0 && (
+      {/* ── Zone 3: Recovery Drivers ── */}
+      {authStatus?.whoop && latest && (
         <Panel>
-          <PanelHeader
-            title="Recent Activities"
-            note={`${Math.min(actsAll.length, 10)} sessions`}
+          <RecoveryDriversChart
+            today={latest}
+            prevDay={prev}
+            baseline={{ hrv_rmssd: base28.hrv, resting_hr: base28.rhr }}
           />
-          <ActivityList activities={actsAll.slice(0, 10)} />
         </Panel>
       )}
 
-      {/* ── Zone 6: Weekly Schedule ── */}
+      {/* ── Zone 4: Weekly Schedule ── */}
       <Panel>
         <PanelHeader title="This Week" note="Training Schedule" />
         <WeekScheduleWidget />
@@ -350,6 +299,20 @@ function WeekScheduleWidget() {
 
   const hasDays = days.length > 0
 
+  if (lifecycle === 'pre_start') {
+    return (
+      <div style={{ textAlign: 'center', padding: '28px 20px' }}>
+        <div style={{ fontSize: 28, marginBottom: 10, opacity: 0.35 }}>⏳</div>
+        <div style={{ fontSize: 14, fontWeight: 650, color: 'var(--text)', marginBottom: 6, letterSpacing: '-0.02em' }}>
+          Plan hasn't started yet
+        </div>
+        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55, fontWeight: 450, maxWidth: 280, margin: '0 auto' }}>
+          Your training plan starts soon. Check the Planner for details.
+        </p>
+      </div>
+    )
+  }
+
   if (!lifecycle || lifecycle === 'no_plan' || (!hasDays && lifecycle !== 'active')) {
     return (
       <div style={{ textAlign: 'center', padding: '28px 20px' }}>
@@ -494,18 +457,3 @@ function MiniDayCard({ day, session, isToday, isPast }) {
   )
 }
 
-// ── Both-connect placeholder ───────────────────────────────────────────────────
-
-function BothConnectCard() {
-  return (
-    <Panel style={{ textAlign: 'center', padding: '48px 24px' }}>
-      <div style={{ fontSize: 28, marginBottom: 14, opacity: 0.4 }}>⚡</div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 8, letterSpacing: '-0.02em' }}>
-        Connect your platforms
-      </div>
-      <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 340, margin: '0 auto', lineHeight: 1.65, fontWeight: 450 }}>
-        Link Strava and WHOOP to unlock your recovery, training load, and performance data.
-      </p>
-    </Panel>
-  )
-}

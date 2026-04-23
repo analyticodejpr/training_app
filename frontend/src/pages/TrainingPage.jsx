@@ -22,7 +22,6 @@ import WeeklyLoadSummary      from '../components/WeeklyLoadSummary'
 import PerformanceTrendChart  from '../components/PerformanceTrendChart'
 import ActivityList           from '../components/ActivityList'
 import ConnectCard            from '../components/ConnectCard'
-import StravaImportPanel      from '../components/StravaImportPanel'
 
 export default function TrainingPage({ authStatus }) {
   const { filterActivities, label } = useDateRange()
@@ -62,9 +61,8 @@ export default function TrainingPage({ authStatus }) {
   if (hookError) {
     return (
       <PageWrapper>
-        <StravaImportPanel />
         <Card>
-          <EmptyNote>Could not load activities: {hookError}. Try importing data using the button above.</EmptyNote>
+          <EmptyNote>Could not load activities: {hookError}.</EmptyNote>
         </Card>
       </PageWrapper>
     )
@@ -72,9 +70,6 @@ export default function TrainingPage({ authStatus }) {
 
   return (
     <PageWrapper>
-
-      {/* ── Strava sync bar ── */}
-      <StravaImportPanel />
 
       {/* ── 1. Weekly composition ── */}
       <Card>

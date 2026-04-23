@@ -30,7 +30,6 @@ import RecoveryDriversChart from '../components/RecoveryDriversChart'
 import SmallMultiplesPanel  from '../components/SmallMultiplesPanel'
 import RecoveryLagChart     from '../components/RecoveryLagChart'
 import ConnectCard          from '../components/ConnectCard'
-import WhoopImportPanel     from '../components/WhoopImportPanel'
 
 export default function RecoveryPage({ authStatus }) {
   const { filterByDate, filterActivities, label } = useDateRange()
@@ -106,9 +105,6 @@ export default function RecoveryPage({ authStatus }) {
 
   return (
     <PageWrapper>
-
-      {/* ── Sync status + manual import trigger ── */}
-      <WhoopImportPanel />
 
       {/* ── Recovery drivers + WHOOP trend lines ── */}
       <TwoCol>

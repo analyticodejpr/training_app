@@ -4,6 +4,15 @@ import { Home, Activity, CalendarDays, User } from 'lucide-react'
 import { getAuthStatus, saveToken } from './utils/api'
 import { DateRangeProvider } from './context/DateRangeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
+
+function ProfileIcon() {
+  const { user } = useAuth()
+  const avatar = user?.user_metadata?.avatar_url
+  if (avatar) {
+    return <img src={avatar} alt="Profile" width={22} height={22} style={{ borderRadius: '50%', objectFit: 'cover' }} />
+  }
+  return <User size={22} strokeWidth={1.7} />
+}
 import TopBar             from './components/TopBar'
 import NameSetupModal     from './components/NameSetupModal'
 import DateRangePicker    from './components/DateRangePicker'
@@ -24,7 +33,7 @@ const DOCK_ITEMS = [
   { href: '/',         label: 'Today',    icon: <Home         size={22} strokeWidth={1.7} /> },
   { href: '/training', label: 'Training', icon: <Activity     size={22} strokeWidth={1.7} /> },
   { href: '/planner',  label: 'Planner',  icon: <CalendarDays size={22} strokeWidth={1.7} /> },
-  { href: '/account',  label: 'Profile',  icon: <User         size={22} strokeWidth={1.7} /> },
+  { href: '/account',  label: 'Profile',  icon: <ProfileIcon /> },
 ]
 
 // ── Root: providers only ──────────────────────────────────────────────────────
@@ -134,7 +143,7 @@ function AppShell() {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
       {/* ── Sticky top bar ── */}
-      <TopBar theme={theme} setTheme={setTheme} />
+      <TopBar theme={theme} setTheme={setTheme} authStatus={authStatus} onDisconnect={fetchStatus} />
 
       {/* ── Date range picker bar ── */}
       <div className="date-range-bar" style={{

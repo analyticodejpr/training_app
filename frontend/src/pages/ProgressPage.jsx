@@ -27,8 +27,6 @@ import {
   EmptyNote, Loader, PillBtn, TOOLTIP_STYLE, GRID_STYLE,
 } from '../components/ui'
 import ConnectCard      from '../components/ConnectCard'
-import StravaImportPanel from '../components/StravaImportPanel'
-import WhoopImportPanel  from '../components/WhoopImportPanel'
 
 export default function ProgressPage({ authStatus }) {
   const { filterActivities, filterByDate } = useDateRange()
@@ -117,10 +115,6 @@ export default function ProgressPage({ authStatus }) {
 
   return (
     <PageWrapper>
-
-      {/* ── Sync status + manual import triggers ── */}
-      {authStatus?.strava && <StravaImportPanel />}
-      {authStatus?.whoop  && <WhoopImportPanel />}
 
       {/* ── Cumulative fitness ── */}
       <Card>
