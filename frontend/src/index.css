@@ -186,7 +186,14 @@ html, body, #root {
 }
 
 a { color: inherit; text-decoration: none; }
-button { font-family: inherit; }
+button { font-family: inherit; touch-action: manipulation; }
+
+/* Remove iOS/Android blue tap flash on every tappable element */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Prevent rubber-band overscroll on the document root */
+html { overscroll-behavior: none; }
+body { overscroll-behavior: none; }
 
 /* ── Scrollbar ─────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -488,9 +495,22 @@ button { font-family: inherit; }
 /* ── Mobile responsive ─────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
 
+  /* TopBar nav row: shrink horizontal padding on small screens */
+  .topbar-nav {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    gap: 8px !important;
+  }
+
+  /* Date range bar */
+  .date-range-bar {
+    padding: 10px 16px !important;
+    gap: 8px !important;
+  }
+
   .page-wrapper {
     /* Extra bottom padding on mobile: dock (~70px) + safe area + breathing room */
-    padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 100px) 16px !important;
+    padding: 16px 14px calc(env(safe-area-inset-bottom, 0px) + 100px) 14px !important;
     gap: 14px !important;
   }
 
@@ -504,6 +524,25 @@ button { font-family: inherit; }
 
   .sleep-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
   .sleep-scroll-inner { min-width: 440px !important; }
+
+  /* 7-day planner schedule: horizontal scroll instead of squishing columns */
+  .schedule-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -14px;
+    padding: 0 14px;
+  }
+  .schedule-scroll > div {
+    min-width: 560px;
+  }
+}
+
+/* ── PWA standalone (added to home screen) ──────────────────────────────────── */
+@media (display-mode: standalone) {
+  /* Stronger glass on TopBar and dock when running as a home-screen app */
+  .topbar {
+    background: color-mix(in srgb, var(--surface) 85%, transparent) !important;
+  }
 }
 
 @theme inline { --animate-gradient: gradient 8s linear infinite;

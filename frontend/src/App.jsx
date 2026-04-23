@@ -143,7 +143,7 @@ function AppShell() {
       />
 
       {/* ── Date range picker bar ── */}
-      <div style={{
+      <div className="date-range-bar" style={{
         padding: '12px 28px',
         borderBottom: '1px solid var(--border)',
         background: 'var(--surface)',

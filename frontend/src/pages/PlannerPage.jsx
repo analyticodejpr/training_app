@@ -362,21 +362,23 @@ function CurrentWeekSchedule({ lifecycle, scheduleCycle, week, days, sessions, l
               {genError}
             </div>
           )}
-          <div style={scheduleGridStyle}>
-            {days.map(day => {
-              const session = sessions.find(s => s.day_id === day.id)
-              const isToday = day.day_date === today
-              const isPast  = day.day_date < today
-              return (
-                <DayCard
-                  key={day.id}
-                  day={day}
-                  session={session}
-                  isToday={isToday}
-                  isPast={isPast}
-                />
-              )
-            })}
+          <div className="schedule-scroll">
+            <div style={scheduleGridStyle}>
+              {days.map(day => {
+                const session = sessions.find(s => s.day_id === day.id)
+                const isToday = day.day_date === today
+                const isPast  = day.day_date < today
+                return (
+                  <DayCard
+                    key={day.id}
+                    day={day}
+                    session={session}
+                    isToday={isToday}
+                    isPast={isPast}
+                  />
+                )
+              })}
+            </div>
           </div>
         </>
       )}

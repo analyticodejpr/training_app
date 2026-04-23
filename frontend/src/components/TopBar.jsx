@@ -51,22 +51,42 @@ export default function TopBar({ authStatus, onDisconnect, theme, setTheme }) {
 
   return (
     <header
+      className="topbar"
       style={{
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        height: 56,
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 28px',
-        borderBottom: '1px solid var(--border)',
+        flexDirection: 'column',
         background: 'var(--surface)',
+        backdropFilter: 'blur(20px) saturate(1.8)',
+        WebkitBackdropFilter: 'blur(20px) saturate(1.8)',
+        borderBottom: '1px solid var(--border)',
         boxShadow: 'var(--shadow-xs)',
         flexShrink: 0,
-        gap: 16,
       }}
     >
+      {/* ── Safe-area spacer ──────────────────────────────────────────────────
+          This div grows to exactly env(safe-area-inset-top) pixels, pushing
+          the nav row below the iPhone status bar / notch / Dynamic Island.
+          In a regular browser window safe-area-inset-top is 0, so it collapses.
+          ───────────────────────────────────────────────────────────────────── */}
+      <div style={{ height: 'env(safe-area-inset-top, 0px)', flexShrink: 0 }} />
+
+      {/* ── Nav row — always exactly 56 px ── */}
+      <div
+        className="topbar-nav"
+        style={{
+          height: 56,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingLeft: '28px',
+          paddingRight: '28px',
+          gap: 16,
+        }}
+      >
+
       {/* ── Left: Logo ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
         <img
@@ -152,6 +172,8 @@ export default function TopBar({ authStatus, onDisconnect, theme, setTheme }) {
             : initial}
         </button>
       </div>
+
+      </div>{/* end topbar-nav */}
     </header>
   )
 }

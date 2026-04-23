@@ -146,8 +146,13 @@ function MobileDock({ items }) {
       style={{
         alignItems: 'center',
         justifyContent: 'space-around',
-        padding: '8px 8px calc(8px + env(safe-area-inset-bottom, 0px))',
+        paddingTop: '8px',
+        paddingRight: '8px',
+        paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
+        paddingLeft: '8px',
         background: 'var(--surface)',
+        backdropFilter: 'blur(24px) saturate(1.8)',
+        WebkitBackdropFilter: 'blur(24px) saturate(1.8)',
         borderTop: '1px solid var(--border)',
         boxShadow: '0 -4px 24px rgba(0,0,0,0.10)',
       }}
