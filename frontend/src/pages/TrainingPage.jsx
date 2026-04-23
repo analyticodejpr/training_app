@@ -1,34 +1,37 @@
 /**
  * TrainingPage — Route: /training
  * "How am I training, and is the structure effective?"
+ *
+ * Layout (per spec):
+ * 1. WeeklyCompositionChart       — sport breakdown by week
+ * 2. TwoCol: WeeklyLoadSummary | SessionCostScatter
+ * 3. TwoCol: PerformanceTrendChart | SportMix + session density
+ * 4. ActivityList with filters
  */
 import { useState, useMemo } from 'react'
-import { useWhoop }  from '../hooks/useWhoop'
-import { useStrava } from '../hooks/useStrava'
+import { useSupabaseActivities } from '../hooks/useSupabaseActivities'
 import { useDateRange } from '../context/DateRangeContext'
-import { computeSportMix, SPORT_COLORS } from '../utils/metrics'
+import { computeSportMix, computeSessionDensity, SPORT_COLORS } from '../utils/metrics'
 import { activityIcon } from '../utils/format'
 import {
   PageWrapper, Card, SectionTitle, TwoCol,
   EmptyNote, Loader, PillBtn,
 } from '../components/ui'
 import WeeklyCompositionChart from '../components/WeeklyCompositionChart'
-import SessionCostScatter     from '../components/SessionCostScatter'
+import WeeklyLoadSummary      from '../components/WeeklyLoadSummary'
 import PerformanceTrendChart  from '../components/PerformanceTrendChart'
 import ActivityList           from '../components/ActivityList'
 import ConnectCard            from '../components/ConnectCard'
+import StravaImportPanel      from '../components/StravaImportPanel'
 
 export default function TrainingPage({ authStatus }) {
-  const { filterActivities, filterByDate, label } = useDateRange()
+  const { filterActivities, label } = useDateRange()
   const [sportFilter, setSportFilter] = useState('All')
 
-  const { daily: whoopAll, loading: wl } = useWhoop(authStatus?.whoop, 90)
-  const { activities: actsAll, loading: sl } = useStrava(authStatus?.strava, 200)
+  // Reads from Supabase activities table — not live Strava API
+  const { activities: actsAll, loading, error: hookError } = useSupabaseActivities(!!authStatus?.strava, 200)
 
-  const loading = wl || sl
-
-  const actsFiltered  = useMemo(() => filterActivities(actsAll), [actsAll, filterActivities])
-  const whoopFiltered = useMemo(() => filterByDate(whoopAll),    [whoopAll, filterByDate])
+  const actsFiltered = useMemo(() => filterActivities(actsAll), [actsAll, filterActivities])
 
   const sports = useMemo(() => ['All', ...new Set(actsFiltered.map(a => a.type || 'Other'))], [actsFiltered])
 
@@ -36,7 +39,15 @@ export default function TrainingPage({ authStatus }) {
     sportFilter === 'All' ? actsFiltered : actsFiltered.filter(a => a.type === sportFilter),
     [actsFiltered, sportFilter])
 
-  const sportMix = useMemo(() => computeSportMix(actsFiltered), [actsFiltered])
+  const sportMix     = useMemo(() => computeSportMix(actsFiltered),     [actsFiltered])
+  const densityBySport = useMemo(() => computeSessionDensity(actsFiltered), [actsFiltered])
+
+  // Map density by sport for easy lookup
+  const densityMap = useMemo(() => {
+    const m = {}
+    for (const d of densityBySport) m[d.type] = d
+    return m
+  }, [densityBySport])
 
   if (!authStatus?.strava) {
     return (
@@ -48,42 +59,51 @@ export default function TrainingPage({ authStatus }) {
 
   if (loading) return <Loader />
 
+  if (hookError) {
+    return (
+      <PageWrapper>
+        <StravaImportPanel />
+        <Card>
+          <EmptyNote>Could not load activities: {hookError}. Try importing data using the button above.</EmptyNote>
+        </Card>
+      </PageWrapper>
+    )
+  }
+
   return (
     <PageWrapper>
 
-      {/* ── Weekly composition ── */}
+      {/* ── Strava sync bar ── */}
+      <StravaImportPanel />
+
+      {/* ── 1. Weekly composition ── */}
       <Card>
         <WeeklyCompositionChart activities={actsFiltered} />
       </Card>
 
-      {/* ── Session cost + Performance ── */}
+      {/* ── 2. Weekly load + Performance trend ── */}
       <TwoCol>
         <Card>
-          <SessionCostScatter activities={actsFiltered} whoopDaily={whoopFiltered} />
-          {!authStatus?.whoop && (
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 12 }}>
-              Connect WHOOP to see how each session impacts next-day recovery.
-            </p>
-          )}
+          <WeeklyLoadSummary activities={actsFiltered} label={label} />
         </Card>
         <Card>
           <PerformanceTrendChart activities={actsFiltered} />
         </Card>
       </TwoCol>
 
-      {/* ── Sport mix ── */}
+      {/* ── 3. Sport mix & density (full width) ── */}
       <Card>
-        <SectionTitle title="Sport Mix" note={label} />
+        <SectionTitle title="Sport Mix & Density" note={label} />
         {sportMix.length ? (
           <div style={sportGrid}>
             {sportMix.map(s => (
-              <SportMixCard key={s.type} sport={s} />
+              <SportMixCard key={s.type} sport={s} density={densityMap[s.type]} />
             ))}
           </div>
-        ) : <EmptyNote>No activities in this period.</EmptyNote>}
+        ) : <EmptyNote>No activities in this period. Try widening the date range.</EmptyNote>}
       </Card>
 
-      {/* ── Activity table ── */}
+      {/* ── 4. Activity table ── */}
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           <SectionTitle title="Activities" note={`${actsByType.length} sessions`} style={{ marginBottom: 0 }} />
@@ -102,7 +122,7 @@ export default function TrainingPage({ authStatus }) {
   )
 }
 
-function SportMixCard({ sport }) {
+function SportMixCard({ sport, density }) {
   const color = SPORT_COLORS[sport.type] || 'var(--text-muted)'
   return (
     <div style={{
@@ -128,10 +148,13 @@ function SportMixCard({ sport }) {
           {sport.pct}%
         </span>
       </div>
-      <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--text-muted)' }}>
+      <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
         <span>{sport.count} sessions</span>
         <span>{sport.distKm} km</span>
         <span>~{sport.avgDurMin} min avg</span>
+        {density && (
+          <span style={{ color: 'var(--text-dim)' }}>{density.sessionsPerWeek}/wk</span>
+        )}
       </div>
     </div>
   )

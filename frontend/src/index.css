@@ -1,92 +1,179 @@
+/* ── Tailwind v4 ─────────────────────────────────────────────────────────────
+   Must be the first statement in this file.
+   ──────────────────────────────────────────────────────────────────────────── */
+@import "tailwindcss";
+
+/* ── Dark mode: fire on [data-theme="dark"] attribute, not .dark class ───────
+   Keeps our existing [data-theme="dark"] { } selectors as the source of truth.
+   Tailwind's dark: utilities will now respect this attribute automatically.
+   ──────────────────────────────────────────────────────────────────────────── */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Theme tokens ─────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS
+   Light theme = primary (root). Dark overrides under [data-theme="dark"].
+   ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-  /* Backgrounds — deep charcoal with a slight cool-blue tint */
-  --bg:         #060910;
-  --surface:    #0c1119;
-  --surface-2:  #121924;
-  --surface-3:  #1a2438;
-
-  /* Borders */
-  --border:     #1e2d42;
-  --border-hi:  #2b4060;
-
-  /* Text */
-  --text:       #dde6f0;
-  --text-muted: #4d6480;
-  --text-dim:   #2e4060;
-
-  /* Accent — vivid orange */
-  --accent:     #ff5500;
-  --accent-dim: rgba(255,85,0,0.15);
-
-  /* WHOOP teal */
-  --whoop:      #00d4aa;
-  --whoop-dim:  rgba(0,212,170,0.12);
-
-  /* Semantic status */
-  --good:       #10d48a;
-  --good-dim:   rgba(16,212,138,0.12);
-  --warn:       #f5a623;
-  --warn-dim:   rgba(245,166,35,0.12);
-  --bad:        #f0546a;
-  --bad-dim:    rgba(240,84,106,0.12);
-
-  /* Shape */
-  --radius:     16px;
-  --radius-sm:  10px;
-  --radius-xs:  6px;
-
-  /* Shadows */
-  --shadow:     0 8px 48px rgba(0,0,0,0.65);
-  --shadow-sm:  0 2px 20px rgba(0,0,0,0.4);
-  --shadow-xs:  0 1px 8px rgba(0,0,0,0.2);
-
-  /* Glow effects */
-  --glow-accent:  0 0 40px rgba(255,85,0,0.2);
-  --glow-green:   0 0 40px rgba(16,212,138,0.18);
-  --glow-blue:    0 0 40px rgba(129,140,248,0.18);
-  --glow-whoop:   0 0 40px rgba(0,212,170,0.15);
-
-  /* Chart */
-  --chart-grid: rgba(30,45,66,0.7);
-
-  /* Inset glass highlight (1px top edge) */
-  --inset-hi: inset 0 1px 0 rgba(255,255,255,0.055);
-}
-
-[data-theme="light"] {
-  --bg:         #eef2f8;
+  /* ── Canvas ── */
+  --bg:         #eaeff8;   /* cool blue-tinted canvas — more atmosphere than #f5f7fa */
   --surface:    #ffffff;
-  --surface-2:  #f4f7fb;
-  --surface-3:  #e9eef7;
-  --border:     #d6e0ef;
-  --border-hi:  #b8c8df;
-  --text:       #0f172a;
-  --text-muted: #607896;
-  --text-dim:   #9ab0c8;
-  --accent-dim: rgba(255,85,0,0.08);
-  --whoop-dim:  rgba(0,212,170,0.08);
-  --good-dim:   rgba(16,212,138,0.08);
-  --warn-dim:   rgba(245,166,35,0.08);
-  --bad-dim:    rgba(240,84,106,0.08);
-  --shadow:     0 8px 40px rgba(15,23,42,0.1);
-  --shadow-sm:  0 2px 16px rgba(15,23,42,0.07);
-  --shadow-xs:  0 1px 6px rgba(15,23,42,0.05);
-  --glow-accent:  0 0 24px rgba(255,85,0,0.08);
-  --glow-green:   0 0 24px rgba(16,212,138,0.08);
-  --glow-blue:    0 0 24px rgba(129,140,248,0.08);
-  --glow-whoop:   0 0 24px rgba(0,212,170,0.08);
-  --chart-grid: rgba(200,215,235,0.8);
-  --inset-hi: inset 0 1px 0 rgba(0,0,0,0.04);
+  --surface-2:  #f2f6fc;   /* slightly more saturated */
+  --surface-3:  #e6edf8;   /* controls, inputs */
+
+  /* ── Borders — feather-light ── */
+  --border:     #d8e2f0;
+  --border-hi:  #b8cce0;
+
+  /* ── Text ── */
+  --text:       #0c1828;   /* deeper cool-black */
+  --text-muted: #5a7290;   /* more blue-tinted than slate-500 */
+  --text-dim:   #8ca4be;
+
+  /* ── Training orange ── */
+  --accent:     #e05200;
+  --accent-dim: rgba(224, 82, 0, 0.09);
+
+  /* ── WHOOP teal ── */
+  --whoop:      #0d9488;
+  --whoop-dim:  rgba(13, 148, 136, 0.09);
+
+  /* ── Semantic status ── */
+  --good:       #059669;
+  --good-dim:   rgba(5, 150, 105, 0.09);
+  --warn:       #d97706;
+  --warn-dim:   rgba(217, 119, 6, 0.09);
+  --bad:        #dc2626;
+  --bad-dim:    rgba(220, 38, 38, 0.09);
+
+  /* ── Shape ── */
+  --radius:     18px;
+  --radius-sm:  12px;
+  --radius-xs:  7px;
+
+  /* ── Shadows — layered depth ── */
+  --shadow:     0 8px 48px rgba(12, 24, 40, 0.13), 0 2px 8px rgba(12, 24, 40, 0.08);
+  --shadow-sm:  0 2px 20px rgba(12, 24, 40, 0.10), 0 1px 4px rgba(12, 24, 40, 0.06);
+  --shadow-xs:  0 1px 6px rgba(12, 24, 40, 0.07);
+
+  /* ── Inset highlight (top-glass edge) ── */
+  --inset-hi:   inset 0 1px 0 rgba(255, 255, 255, 1);
+
+  /* ── Ambient glows ── */
+  --glow-accent:  0 0 40px rgba(224, 82, 0, 0.12);
+  --glow-green:   0 0 40px rgba(5, 150, 105, 0.12);
+  --glow-blue:    0 0 40px rgba(99, 102, 241, 0.12);
+  --glow-whoop:   0 0 40px rgba(13, 148, 136, 0.12);
+
+  /* ── Chart ── */
+  --chart-grid: rgba(0, 0, 0, 0.06);
+
+  /* ── Panel surface gradient — subtle top luminosity ── */
+  --panel-gradient: linear-gradient(160deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 55%);
+
+  /* ── shadcn/ui variable bridge ───────────────────────────────────────────────
+     Maps the CSS variable names that shadcn components expect to our existing
+     design tokens. This lets shadcn structural components (Tabs, NavigationMenu,
+     Sheet, Tooltip) pick up our color system automatically.
+
+     IMPORTANT: --accent is intentionally left mapped to our brand orange below.
+     shadcn components that use bg-accent (hover states) will be overridden at
+     the component level in Phase 1 rather than here.
+     ───────────────────────────────────────────────────────────────────────── */
+  --background:             var(--bg);
+  --foreground:             var(--text);
+  --card:                   var(--surface);
+  --card-foreground:        var(--text);
+  --popover:                var(--surface);
+  --popover-foreground:     var(--text);
+  --primary:                var(--accent);
+  --primary-foreground:     #ffffff;
+  --secondary:              var(--surface-2);
+  --secondary-foreground:   var(--text);
+  --muted:                  var(--surface-3);
+  --muted-foreground:       var(--text-muted);
+  --destructive:            var(--bad);
+  --destructive-foreground: #ffffff;
+  --input:                  var(--surface-3);
+  --ring:                   var(--accent);
+  /* Radius aliases — shadcn components reference these specific names */
+  --radius-sm:              var(--radius-xs);
+  --radius-md:              var(--radius-sm);
+  --radius-lg:              var(--radius);
+  --radius-xl:              20px;
 }
 
-/* ── Smooth theme transitions ─────────────────────────────────────────────── */
-html { transition: background-color 0.3s ease; }
-body, #root { transition: background-color 0.3s ease, color 0.2s ease; }
+/* ── Dark theme ──────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  /* Deep space, not blue-gray SaaS dark */
+  --bg:         #030610;
+  --surface:    #07101f;
+  --surface-2:  #0c1829;
+  --surface-3:  #112134;
 
-/* ── Base ─────────────────────────────────────────────────────────────────── */
+  /* Transparent borders — atmospheric, not hard lines */
+  --border:     rgba(255, 255, 255, 0.07);
+  --border-hi:  rgba(255, 255, 255, 0.14);
+
+  --text:       #ddeaf8;
+  --text-muted: #4d6b8a;
+  --text-dim:   #274060;
+
+  --accent:     #ff5500;
+  --accent-dim: rgba(255, 85, 0, 0.16);
+  --whoop:      #00d4aa;
+  --whoop-dim:  rgba(0, 212, 170, 0.12);
+
+  --good:       #10d48a;
+  --good-dim:   rgba(16, 212, 138, 0.12);
+  --warn:       #f5a623;
+  --warn-dim:   rgba(245, 166, 35, 0.12);
+  --bad:        #f0546a;
+  --bad-dim:    rgba(240, 84, 106, 0.12);
+
+  /* Cinematic shadow depth */
+  --shadow:     0 24px 80px rgba(0, 0, 0, 0.80), 0 4px 16px rgba(0, 0, 0, 0.40);
+  --shadow-sm:  0 8px 40px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.30);
+  --shadow-xs:  0 2px 16px rgba(0, 0, 0, 0.28);
+
+  /* Glass top-edge highlight — slightly luminous */
+  --inset-hi:   inset 0 1px 0 rgba(255, 255, 255, 0.09);
+
+  --glow-accent:  0 0 48px rgba(255, 85, 0, 0.22);
+  --glow-green:   0 0 48px rgba(16, 212, 138, 0.18);
+  --glow-blue:    0 0 48px rgba(129, 140, 248, 0.18);
+  --glow-whoop:   0 0 48px rgba(0, 212, 170, 0.16);
+
+  --chart-grid: rgba(255, 255, 255, 0.05);
+
+  /* Panel gradient — subtle internal luminosity from top-left corner */
+  --panel-gradient: linear-gradient(145deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0) 55%);
+
+  /* ── shadcn/ui dark bridge — same semantics, dark token values ── */
+  --background:             var(--bg);
+  --foreground:             var(--text);
+  --card:                   var(--surface);
+  --card-foreground:        var(--text);
+  --popover:                var(--surface);
+  --popover-foreground:     var(--text);
+  --primary:                var(--accent);
+  --primary-foreground:     #ffffff;
+  --secondary:              var(--surface-2);
+  --secondary-foreground:   var(--text);
+  --muted:                  var(--surface-3);
+  --muted-foreground:       var(--text-muted);
+  --destructive:            var(--bad);
+  --destructive-foreground: #ffffff;
+  --input:                  var(--surface-3);
+  --ring:                   var(--accent);
+}
+
+/* ── Smooth theme transitions ──────────────────────────────────────────────── */
+html { transition: background-color 0.35s ease; }
+body, #root { transition: background-color 0.35s ease, color 0.25s ease; }
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
 html, body, #root {
   min-height: 100%;
   background: var(--bg);
@@ -101,146 +188,171 @@ html, body, #root {
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; }
 
-/* ── Scrollbar ────────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border-hi); }
+::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
-/* ── Premium card surface ─────────────────────────────────────────────────── */
-/* Use .card-premium to get inset highlight + deep shadow */
+/* ── App shell — futuristic frosted glass ──────────────────────────────────── */
+.app-shell {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(40px) saturate(1.8) brightness(1.01);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8) brightness(1.01);
+}
+[data-theme="dark"] .app-shell {
+  background: rgba(3, 6, 16, 0.84);
+  backdrop-filter: blur(52px) saturate(2.2) brightness(0.96);
+  -webkit-backdrop-filter: blur(52px) saturate(2.2) brightness(0.96);
+}
+
+/* ── Shell top accent stripe ───────────────────────────────────────────────── */
+/* Applied via a child div inside .app-shell */
+.shell-stripe {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--accent) 25%,
+    rgba(255, 140, 60, 0.8) 50%,
+    var(--accent) 75%,
+    transparent 100%
+  );
+  opacity: 0.45;
+  pointer-events: none;
+  z-index: 1;
+}
+[data-theme="dark"] .shell-stripe {
+  opacity: 0.65;
+}
+
+/* ── Panel surface — layered depth ─────────────────────────────────────────── */
+.panel-surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm), var(--inset-hi);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Top-left luminosity gradient overlay */
+.panel-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--panel-gradient);
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+/* ── Card (legacy compat) ──────────────────────────────────────────────────── */
 .card-premium {
   box-shadow: var(--shadow-sm), var(--inset-hi);
 }
 
-/* ── Card hover lift ──────────────────────────────────────────────────────── */
+/* ── Panel hover lift — spring physics ─────────────────────────────────────── */
 .card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.3s ease;
   cursor: pointer;
 }
 .card-hover:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow), var(--inset-hi);
 }
 
-/* ── Glass / frosted surface ──────────────────────────────────────────────── */
+/* ── Glass / frosted surface ───────────────────────────────────────────────── */
 .glass {
-  background: rgba(12,17,25,0.82);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
 }
-[data-theme="light"] .glass {
-  background: rgba(255,255,255,0.85);
+[data-theme="dark"] .glass {
+  background: rgba(7, 16, 31, 0.82);
 }
 
-/* ── Page fade-up entrance ────────────────────────────────────────────────── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* ── Page entrance — blur dissolve on spring curve ─────────────────────────── */
+@keyframes fadeUpBlur {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
 }
-.fade-up { animation: fadeUp 0.3s ease both; }
+
+.fade-up {
+  animation: fadeUpBlur 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 
 /* Staggered children */
 .fade-up > *:nth-child(1) { animation-delay: 0ms; }
-.fade-up > *:nth-child(2) { animation-delay: 40ms; }
-.fade-up > *:nth-child(3) { animation-delay: 80ms; }
-.fade-up > *:nth-child(4) { animation-delay: 120ms; }
-.fade-up > *:nth-child(5) { animation-delay: 160ms; }
+.fade-up > *:nth-child(2) { animation-delay: 50ms; }
+.fade-up > *:nth-child(3) { animation-delay: 100ms; }
+.fade-up > *:nth-child(4) { animation-delay: 150ms; }
+.fade-up > *:nth-child(5) { animation-delay: 200ms; }
 
-/* ── Glow pulse (for active indicators) ──────────────────────────────────── */
+/* ── Glow pulse ─────────────────────────────────────────────────────────────── */
 @keyframes glowPulse {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.55; }
+  50%       { opacity: 0.45; }
 }
-.glow-pulse { animation: glowPulse 2.4s ease-in-out infinite; }
+.glow-pulse { animation: glowPulse 2.8s ease-in-out infinite; }
 
-/* ── Metric number typography ─────────────────────────────────────────────── */
+/* ── Metric number typography ──────────────────────────────────────────────── */
 .metric-mono {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
 
-/* ── Mobile responsive — iPhone optimised (390pt viewport) ───────────────── */
-@media (max-width: 640px) {
-
-  /* ── Safe area: push header below the Dynamic Island / notch ── */
-  .header-safe {
-    padding-top: env(safe-area-inset-top, 0px) !important;
-  }
-
-  /* ── Sticky nav accounts for the taller header ── */
-  .nav-wrapper {
-    top: calc(54px + env(safe-area-inset-top, 0px)) !important;
-  }
-
-  /* ── Page layout ── */
-  .page-wrapper {
-    padding: 12px 16px calc(env(safe-area-inset-bottom, 0px) + 80px) 16px !important;
-    gap: 12px !important;
-  }
-
-  /* ── Cards ── */
-  .card { padding: 16px !important; }
-
-  /* ── Two-column grid → single column ── */
-  .two-col { grid-template-columns: 1fr !important; }
-
-  /* ── Header ── */
-  .header-inner { padding: 0 16px !important; }
-  /* Pill touch target: min 44pt per Apple HIG */
-  .header-pill  {
-    min-height: 36px !important;
-    padding: 0 10px !important;
-    font-size: 11px !important;
-  }
-  /* Theme toggle: 44×44pt */
-  .theme-btn {
-    width: 44px !important;
-    height: 44px !important;
-  }
-
-  /* ── Nav: burger layout ── */
-  .nav-inner {
-    padding: 0 12px !important;
-    height: 48px !important;
-    gap: 8px !important;
-  }
-  /* Hide desktop tabs, show mobile burger row */
-  .desktop-nav  { display: none !important; }
-  .mobile-nav-row { display: flex !important; }
-
-  /* Period filter: compact row */
-  .period-bar {
-    padding: 2px !important;
-    gap: 1px !important;
-  }
-  .period-btn {
-    padding: 4px 7px !important;
-    font-size: 10px !important;
-    min-height: 32px !important;
-  }
-
-  /* ── Recovery hero ── */
-  .hero-left      { padding: 18px 20px !important; }
-  .hero-score     { font-size: 64px !important; letter-spacing: -2px !important; }
-  .companion-cell { padding: 14px 16px !important; }
-  .companion-cell .metric-mono { font-size: 24px !important; }
-
-  /* ── Charts: stack side-by-side grids ── */
-  .perf-trend-grid { grid-template-columns: 1fr !important; }
-
-  /* ── Sleep matrix: horizontal scroll so columns stay readable ── */
-  .sleep-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
-  .sleep-scroll-inner { min-width: 440px !important; }
+/* ── Nav tab — capsule style ───────────────────────────────────────────────── */
+/* Active state: subtle surface fill, no underline */
+.nav-tab-active {
+  background: var(--surface-3) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] .nav-tab-active {
+  background: rgba(255, 255, 255, 0.07) !important;
+  color: var(--text) !important;
 }
 
-/* ── Button / pill base reset ─────────────────────────────────────────────── */
+/* ── Period control (desktop) — HUD text labels ────────────────────────────── */
+/* Active: accent color + weight. No pill, no track. */
+.period-active {
+  color: var(--accent) !important;
+  font-weight: 660 !important;
+}
+
+/* ── Segment control (mobile dropdown) — pill track ────────────────────────── */
+.seg-active {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  box-shadow: 0 1px 6px rgba(15, 25, 41, 0.12), 0 0 0 0.5px rgba(15, 25, 41, 0.06), inset 0 1px 0 rgba(255,255,255,0.95) !important;
+  font-weight: 640 !important;
+}
+[data-theme="dark"] .seg-active {
+  background: var(--surface-2) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.40), 0 0 0 0.5px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.07) !important;
+}
+
+/* ── StatRow / StatCell strip ──────────────────────────────────────────────── */
+.stat-row > *:last-child { border-right: none !important; }
+
+/* ── Button / pill base ────────────────────────────────────────────────────── */
 .pill-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 14px;
+  padding: 5px 13px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
@@ -248,8 +360,8 @@ button { font-family: inherit; }
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-muted);
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-  letter-spacing: 0.02em;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   font-family: inherit;
 }
@@ -259,3 +371,156 @@ button { font-family: inherit; }
   background: var(--accent-dim);
   color: var(--accent);
 }
+
+/* ── Skeleton shimmer ──────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    var(--surface-3) 50%,
+    var(--surface-2) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: var(--radius-xs);
+}
+
+/* ── Calendar (react-day-picker v9) ─────────────────────────────────────────── */
+.calendar-root { padding: 16px; user-select: none; }
+
+.cal-months { display: flex; gap: 24px; flex-wrap: wrap; }
+.cal-month  { display: flex; flex-direction: column; gap: 12px; }
+
+.cal-caption {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 30px; position: relative;
+}
+.cal-caption-label {
+  font-size: 13px; font-weight: 650;
+  color: var(--text); letter-spacing: -0.02em;
+  position: absolute; left: 50%; transform: translateX(-50%);
+  white-space: nowrap; pointer-events: none;
+}
+.cal-nav { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+
+.cal-nav-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 7px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-muted); cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.cal-nav-btn:hover {
+  border-color: var(--border-hi);
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.cal-grid { width: 100%; border-collapse: collapse; }
+
+.cal-weekdays { display: flex; margin-bottom: 4px; }
+.cal-weekday  {
+  width: 34px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: var(--text-dim);
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+
+.cal-week { display: flex; }
+
+.cal-day {
+  width: 34px; height: 34px; padding: 0;
+  position: relative; display: flex;
+  align-items: center; justify-content: center;
+}
+.cal-day-btn {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12.5px; font-weight: 500;
+  color: var(--text); background: transparent; border: none;
+  cursor: pointer; transition: background 0.12s, color 0.12s;
+  font-family: inherit; letter-spacing: -0.01em;
+}
+.cal-day-btn:hover { background: var(--surface-2); }
+
+/* Today marker */
+.cal-today .cal-day-btn {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Range middle — fill band */
+.cal-range-mid {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-radius: 0;
+}
+.cal-range-mid .cal-day-btn { color: var(--text); }
+
+/* Range start */
+.cal-range-start { border-radius: 8px 0 0 8px; }
+.cal-range-start.cal-range-end { border-radius: 8px; }
+.cal-range-start .cal-day-btn,
+.cal-range-end   .cal-day-btn {
+  background: var(--accent);
+  color: #fff !important;
+  font-weight: 650;
+}
+
+/* Range end */
+.cal-range-end { border-radius: 0 8px 8px 0; }
+
+/* Selected (single day) */
+.cal-selected:not(.cal-range-mid) .cal-day-btn {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 650;
+}
+
+/* Outside / disabled */
+.cal-outside .cal-day-btn { color: var(--text-dim); opacity: 0.45; }
+.cal-disabled .cal-day-btn { color: var(--text-dim); opacity: 0.3; cursor: default; }
+.cal-hidden { visibility: hidden; }
+
+/* ── Mobile responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  .page-wrapper {
+    /* Extra bottom padding on mobile: dock (~70px) + safe area + breathing room */
+    padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 100px) 16px !important;
+    gap: 14px !important;
+  }
+
+  .card { padding: 16px !important; }
+  .two-col { grid-template-columns: 1fr !important; }
+
+  .hero-left  { padding: 18px 20px !important; }
+  .hero-score { font-size: 64px !important; letter-spacing: -2px !important; }
+
+  .perf-trend-grid { grid-template-columns: 1fr !important; }
+
+  .sleep-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+  .sleep-scroll-inner { min-width: 440px !important; }
+}
+
+@theme inline { --animate-gradient: gradient 8s linear infinite;
+  @keyframes gradient {
+  to {
+    background-position: var(--bg-size, 300%) 0; } }
+  --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
+  --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear ;
+  @keyframes shimmer-slide {
+  to {
+    transform: translate(calc(100cqw - 100%), 0); } }
+  @keyframes spin-around {
+  0% {
+    transform: translateZ(0) rotate(0); }
+  15%, 35% {
+    transform: translateZ(0) rotate(90deg); }
+  65%, 85% {
+    transform: translateZ(0) rotate(270deg); }
+  100% {
+    transform: translateZ(0) rotate(360deg); } }}

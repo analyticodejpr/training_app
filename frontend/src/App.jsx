@@ -1,22 +1,56 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Home, Activity, Heart, TrendingUp, CalendarDays } from 'lucide-react'
 import { getAuthStatus, saveToken } from './utils/api'
 import { DateRangeProvider } from './context/DateRangeContext'
-import Header from './components/Header'
-import Nav    from './components/Nav'
-import LoginPage    from './pages/LoginPage'
-import DashboardPage from './pages/DashboardPage'
-
+import { AuthProvider, useAuth } from './context/AuthContext'
+import TopBar             from './components/TopBar'
+import NameSetupModal     from './components/NameSetupModal'
+import DateRangePicker    from './components/DateRangePicker'
+import { FloatingDock }   from './components/ui/floating-dock'
+import SignInPage         from './pages/SignInPage'
+import LoginPage          from './pages/LoginPage'
+import AuthCallbackPage   from './pages/AuthCallbackPage'
+import DashboardPage      from './pages/DashboardPage'
 
 const TrainingPage = lazy(() => import('./pages/TrainingPage'))
 const RecoveryPage = lazy(() => import('./pages/RecoveryPage'))
 const ProgressPage = lazy(() => import('./pages/ProgressPage'))
+const AccountPage  = lazy(() => import('./pages/AccountPage'))
+const StatusPage   = lazy(() => import('./pages/StatusPage'))
+const PlannerPage  = lazy(() => import('./pages/PlannerPage'))
 
+const DOCK_ITEMS = [
+  { href: '/',         label: 'Today',    icon: <Home         size={20} strokeWidth={1.7} /> },
+  { href: '/training', label: 'Training', icon: <Activity     size={20} strokeWidth={1.7} /> },
+  { href: '/recovery', label: 'Recovery', icon: <Heart        size={20} strokeWidth={1.7} /> },
+  { href: '/progress', label: 'Progress', icon: <TrendingUp   size={20} strokeWidth={1.7} /> },
+  { href: '/planner',  label: 'Planner',  icon: <CalendarDays size={20} strokeWidth={1.7} /> },
+]
+
+// ── Root: providers only ──────────────────────────────────────────────────────
 export default function App() {
-  const [authStatus, setAuthStatus] = useState(null)
-  const [loading,    setLoading]    = useState(true)
-  const [oauthError, setOauthError] = useState(null)
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark')
+  return (
+    <AuthProvider>
+      <DateRangeProvider>
+        <BrowserRouter>
+          <AppShell />
+        </BrowserRouter>
+      </DateRangeProvider>
+    </AuthProvider>
+  )
+}
+
+// ── AppShell: uses auth context, owns Strava/WHOOP API state ─────────────────
+function AppShell() {
+  const { user, loading: authLoading } = useAuth()
+
+  const [authStatus,     setAuthStatus]     = useState(null)
+  const [apiLoading,     setApiLoading]     = useState(true)
+  const [oauthError,     setOauthError]     = useState(null)
+  const [theme,          setTheme]          = useState(() => localStorage.getItem('theme') || 'light')
+  const [showNameSetup,  setShowNameSetup]  = useState(false)
+  const nameChecked = useRef(false)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -30,12 +64,17 @@ export default function App() {
     } catch {
       setAuthStatus({ strava: false, whoop: false })
     } finally {
-      setLoading(false)
+      setApiLoading(false)
     }
   }
 
   useEffect(() => {
-    // Extract encrypted session token from URL hash (#tok=...) after OAuth redirect
+    // Only call the Express API once Supabase confirms a signed-in user
+    if (!user) {
+      setApiLoading(false)
+      return
+    }
+
     const hash = window.location.hash
     if (hash.includes('tok=')) {
       const token = new URLSearchParams(hash.slice(1)).get('tok')
@@ -44,6 +83,21 @@ export default function App() {
     }
 
     fetchStatus()
+
+    // Check once per session whether full_name is set in profiles
+    if (!nameChecked.current) {
+      nameChecked.current = true
+      import('./lib/supabase').then(({ supabase }) => {
+        supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (!data?.full_name) setShowNameSetup(true)
+          })
+      })
+    }
 
     const params = new URLSearchParams(window.location.search)
     if (params.has('error')) {
@@ -58,61 +112,111 @@ export default function App() {
     if (params.has('connected') || params.has('error')) {
       window.history.replaceState({}, '', window.location.pathname)
     }
-  }, [])
+  }, [user])
 
-  if (loading) return <Splash />
+  // Show splash while either Supabase session OR Express API is resolving
+  if (authLoading || (user && apiLoading)) return <Splash />
 
+  // ── Public auth routes (always reachable) ─────────────────────────────────
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/login"         element={<SignInPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route path="*"              element={<Navigate to="/login" replace />} />
+      </Routes>
+    )
+  }
+
+  // ── Authenticated app shell ───────────────────────────────────────────────
   const anyConnected = authStatus?.strava || authStatus?.whoop
 
   return (
-    <DateRangeProvider>
-      <BrowserRouter>
-        <Header
-          authStatus={authStatus}
-          onDisconnect={fetchStatus}
-          theme={theme}
-          setTheme={setTheme}
-        />
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
-        {oauthError && (
-          <div style={{
-            background: '#7f1d1d', color: '#fca5a5',
-            padding: '10px 24px', fontSize: 13,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            borderBottom: '1px solid #991b1b',
-          }}>
-            <span>{oauthError}</span>
-            <button onClick={() => setOauthError(null)} style={{
-              background: 'none', border: 'none', color: '#fca5a5',
+      {/* ── Sticky top bar ── */}
+      <TopBar
+        authStatus={authStatus}
+        onDisconnect={fetchStatus}
+        theme={theme}
+        setTheme={setTheme}
+      />
+
+      {/* ── Date range picker bar ── */}
+      <div style={{
+        padding: '12px 28px',
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--surface)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        flexShrink: 0,
+      }}>
+        <span style={{
+          fontSize: 12, fontWeight: 600,
+          color: 'var(--text-dim)',
+          letterSpacing: '-0.01em',
+          whiteSpace: 'nowrap',
+        }}>
+          Date range
+        </span>
+        <DateRangePicker />
+      </div>
+
+      {/* ── OAuth error banner ── */}
+      {oauthError && (
+        <div style={{
+          background: 'var(--bad-dim)', color: 'var(--bad)',
+          padding: '10px 28px', fontSize: 13,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderBottom: '1px solid var(--border)',
+          flexShrink: 0,
+        }}>
+          <span>{oauthError}</span>
+          <button
+            onClick={() => setOauthError(null)}
+            style={{
+              background: 'none', border: 'none', color: 'var(--bad)',
               cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 4px',
-            }}>✕</button>
-          </div>
-        )}
+            }}
+          >✕</button>
+        </div>
+      )}
 
-        {anyConnected && <Nav />}
-
+      {/* ── Page content ── */}
+      <main style={{ flex: 1, minWidth: 0 }}>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* Root: login or daily dashboard */}
+            <Route path="/login"         element={<Navigate to="/" replace />} />
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            <Route path="/status"        element={<StatusPage />} />
             <Route path="/" element={
               anyConnected
                 ? <DashboardPage authStatus={authStatus} />
                 : <LoginPage authStatus={authStatus} />
             } />
-
-            {/* Legacy /dashboard redirect */}
             <Route path="/dashboard" element={<Navigate to="/" replace />} />
-
-            {/* Analytics pages — always render (show connect prompts if not authed) */}
             <Route path="/training"  element={<TrainingPage  authStatus={authStatus} />} />
             <Route path="/recovery"  element={<RecoveryPage  authStatus={authStatus} />} />
             <Route path="/progress"  element={<ProgressPage  authStatus={authStatus} />} />
-
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="/planner"   element={<PlannerPage   authStatus={authStatus} />} />
+            <Route path="/account"   element={<AccountPage   onProviderChange={fetchStatus} />} />
+            <Route path="*"          element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
-      </BrowserRouter>
-    </DateRangeProvider>
+      </main>
+
+      {/* ── Floating dock ── */}
+      <FloatingDock items={DOCK_ITEMS} />
+
+      {/* ── Name setup modal (shown once if full_name is missing) ── */}
+      {showNameSetup && (
+        <NameSetupModal
+          user={user}
+          onDone={() => setShowNameSetup(false)}
+        />
+      )}
+    </div>
   )
 }
 

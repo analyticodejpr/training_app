@@ -2,6 +2,7 @@ const express  = require('express');
 const axios    = require('axios');
 const crypto   = require('crypto');
 const { encrypt, decrypt } = require('../tokenCrypto');
+const { supabase, getUserFromToken } = require('../db/supabase');
 
 const router = express.Router();
 
@@ -53,8 +54,29 @@ function redirectWithToken(res, session, platform) {
 
 // ── Strava OAuth ──────────────────────────────────────────────────────────────
 
-router.get('/strava/connect', (req, res) => {
-  const state = encodeState('strava', req.query.t || '');
+// Strava connect — requires a valid Supabase user JWT (sbToken param).
+// We verify the JWT here once, then embed the user_id in the encrypted state.
+// The callback reads user_id from state so it never needs to re-verify the JWT.
+router.get('/strava/connect', async (req, res) => {
+  const { t: existingToken, sbToken } = req.query;
+
+  // Verify Supabase identity before starting the OAuth flow
+  if (!sbToken) {
+    return res.redirect(`${process.env.FRONTEND_URL}/?error=strava_no_auth`);
+  }
+  const user = await getUserFromToken(sbToken);
+  if (!user) {
+    return res.redirect(`${process.env.FRONTEND_URL}/?error=strava_unauth`);
+  }
+
+  // Build tamper-proof encrypted state containing verified user_id + nonce
+  const state = encrypt({
+    supabaseUserId: user.id,
+    existingToken:  existingToken || '',
+    nonce:          crypto.randomBytes(16).toString('hex'),
+    ts:             Date.now(),
+  });
+
   const params = new URLSearchParams({
     client_id:       process.env.STRAVA_CLIENT_ID,
     redirect_uri:    process.env.STRAVA_REDIRECT_URI,
@@ -70,9 +92,16 @@ router.get('/strava/callback', async (req, res) => {
   const { code, error, state } = req.query;
   if (error) return res.redirect(`${process.env.FRONTEND_URL}/?error=strava_denied`);
 
-  const { existingToken } = decodeState(state || '');
+  // Decrypt and validate state
+  const stateData = decrypt(state || '');
+  if (!stateData || Date.now() - stateData.ts > 15 * 60 * 1000) {
+    return res.redirect(`${process.env.FRONTEND_URL}/?error=strava_state`);
+  }
+
+  const { supabaseUserId, existingToken } = stateData;
 
   try {
+    // Exchange the authorization code for tokens
     const { data } = await axios.post('https://www.strava.com/oauth/token', {
       client_id:     process.env.STRAVA_CLIENT_ID,
       client_secret: process.env.STRAVA_CLIENT_SECRET,
@@ -80,6 +109,33 @@ router.get('/strava/callback', async (req, res) => {
       grant_type: 'authorization_code',
     });
 
+    // ── Save connection to Supabase ─────────────────────────────────────────
+    // Columns are named *_encrypted; we store plaintext here since the DB encrypts
+    // at rest via Supabase Vault. Add pgsodium column-level encryption when ready.
+    if (supabase && supabaseUserId) {
+      const { error: upsertErr } = await supabase
+        .from('provider_connections')
+        .upsert({
+          user_id:                  supabaseUserId,
+          provider:                 'strava',
+          provider_user_id:         String(data.athlete?.id || ''),
+          access_token_encrypted:   data.access_token,
+          refresh_token_encrypted:  data.refresh_token,
+          token_expires_at:         new Date(data.expires_at * 1000).toISOString(),
+          scopes:                   (data.scope || '').split(',').filter(Boolean),
+          status:                   'active',
+          updated_at:               new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,provider',
+        });
+
+      if (upsertErr) {
+        console.error('[strava/callback] Supabase upsert error:', upsertErr.message);
+        // Non-fatal — continue so the user still gets their session token
+      }
+    }
+
+    // ── Also persist to the encrypted session token (existing mechanism) ────
     const session = mergeSession(existingToken, {
       strava: {
         access_token:  data.access_token,
@@ -99,9 +155,27 @@ router.get('/strava/callback', async (req, res) => {
 
 // ── WHOOP OAuth ───────────────────────────────────────────────────────────────
 
-router.get('/whoop/connect', (req, res) => {
-  const hmac  = makeHmacState();
-  const state = encodeState(hmac, req.query.t || '');
+// WHOOP connect — requires a valid Supabase user JWT (sbToken param).
+// Uses the same encrypted state pattern as Strava so the callback can recover
+// the verified user_id without re-verifying the JWT.
+router.get('/whoop/connect', async (req, res) => {
+  const { t: existingToken, sbToken } = req.query;
+
+  if (!sbToken) {
+    return res.redirect(`${process.env.FRONTEND_URL}/?error=whoop_no_auth`);
+  }
+  const user = await getUserFromToken(sbToken);
+  if (!user) {
+    return res.redirect(`${process.env.FRONTEND_URL}/?error=whoop_unauth`);
+  }
+
+  const state = encrypt({
+    supabaseUserId: user.id,
+    existingToken:  existingToken || '',
+    nonce:          crypto.randomBytes(16).toString('hex'),
+    ts:             Date.now(),
+  });
+
   const params = new URLSearchParams({
     client_id:     process.env.WHOOP_CLIENT_ID,
     redirect_uri:  process.env.WHOOP_REDIRECT_URI,
@@ -113,18 +187,19 @@ router.get('/whoop/connect', (req, res) => {
 });
 
 router.get('/whoop/callback', async (req, res) => {
-  const { code, error, error_description, state } = req.query;
+  const { code, error, state } = req.query;
 
   if (error) {
-    return res.redirect(
-      `${process.env.FRONTEND_URL}/?error=whoop_denied&whoop_error=${encodeURIComponent(error)}&whoop_desc=${encodeURIComponent(error_description || '')}`
-    );
+    return res.redirect(`${process.env.FRONTEND_URL}/?error=whoop_denied`);
   }
 
-  const { hmacPart, existingToken } = decodeState(state || '');
-  if (!verifyHmacState(hmacPart)) {
-    return res.redirect(`${process.env.FRONTEND_URL}/?error=whoop_denied&whoop_error=state_mismatch`);
+  // Decrypt and validate state (same pattern as Strava callback)
+  const stateData = decrypt(state || '');
+  if (!stateData || Date.now() - stateData.ts > 15 * 60 * 1000) {
+    return res.redirect(`${process.env.FRONTEND_URL}/?error=whoop_state`);
   }
+
+  const { supabaseUserId, existingToken } = stateData;
 
   try {
     const params = new URLSearchParams({
@@ -141,11 +216,47 @@ router.get('/whoop/callback', async (req, res) => {
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
+    const expiresAt = Math.floor(Date.now() / 1000) + (data.expires_in || 3600);
+
+    // Fetch the WHOOP user ID from the profile endpoint — needed for webhook routing.
+    // The token response does not include it; this extra call is required once at connect time.
+    let whoopUserId = '';
+    try {
+      const profileResp = await axios.get(
+        'https://api.prod.whoop.com/developer/v1/user/profile/basic',
+        { headers: { Authorization: `Bearer ${data.access_token}` } }
+      );
+      whoopUserId = String(profileResp.data.user_id || '');
+    } catch (profileErr) {
+      // Non-fatal — webhook routing won't work until reconnected, but import still works
+      console.warn('[whoop/callback] failed to fetch WHOOP profile for provider_user_id:', profileErr.message);
+    }
+
+    // ── Save connection to Supabase ─────────────────────────────────────────
+    if (supabase && supabaseUserId) {
+      const { error: upsertErr } = await supabase
+        .from('provider_connections')
+        .upsert({
+          user_id:                  supabaseUserId,
+          provider:                 'whoop',
+          provider_user_id:         whoopUserId,
+          access_token_encrypted:   data.access_token,
+          refresh_token_encrypted:  data.refresh_token,
+          token_expires_at:         new Date(expiresAt * 1000).toISOString(),
+          scopes:                   (data.scope || '').split(' ').filter(Boolean),
+          status:                   'active',
+          updated_at:               new Date().toISOString(),
+        }, { onConflict: 'user_id,provider' });
+
+      if (upsertErr) console.error('[whoop/callback] Supabase upsert error:', upsertErr.message);
+    }
+
+    // ── Also persist to encrypted session token (backward compat) ────────
     const session = mergeSession(existingToken, {
       whoop: {
         access_token:  data.access_token,
         refresh_token: data.refresh_token,
-        expires_at:    Math.floor(Date.now() / 1000) + (data.expires_in || 3600),
+        expires_at:    expiresAt,
         scope:         data.scope || '',
       },
     });

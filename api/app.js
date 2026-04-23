@@ -3,21 +3,33 @@ const express    = require('express');
 const cors       = require('cors');
 const { decrypt } = require('./tokenCrypto');
 
-const authRoutes   = require('./routes/auth');
-const stravaRoutes = require('./routes/strava');
-const whoopRoutes  = require('./routes/whoop');
+const authRoutes    = require('./routes/auth');
+const stravaRoutes  = require('./routes/strava');
+const whoopRoutes   = require('./routes/whoop');
+const webhookRoutes = require('./routes/webhooks');
+const plannerRoutes = require('./routes/planner');
 const { stravaLimiter, whoopLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 app.set('trust proxy', 1);
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
+// In production FRONTEND_URL is the single allowed origin.
+// In local dev, also allow :3000–:3002 in case Vite falls back to a different port.
+const allowedOrigins = new Set(
+  [process.env.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002']
+    .filter(Boolean)
+);
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, cb) => cb(null, !origin || allowedOrigins.has(origin)),
   credentials: true,
 }));
 
-app.use(express.json());
+// Capture the raw request body for WHOOP webhook HMAC verification.
+// The Buffer is stored as req.rawBody before express.json() consumes the stream.
+app.use(express.json({
+  verify: (req, _res, buf) => { req.rawBody = buf; },
+}));
 
 // ── Session from Bearer token ─────────────────────────────────────────────────
 // The frontend stores an encrypted session token in localStorage and sends it
@@ -35,9 +47,12 @@ app.use((req, res, next) => {
 });
 
 // ── Routes ────────────────────────────────────────────────────────────────────
-app.use('/api/auth',   authRoutes);
-app.use('/api/strava', stravaLimiter, stravaRoutes);
-app.use('/api/whoop',  whoopLimiter,  whoopRoutes);
+app.use('/api/auth',     authRoutes);
+app.use('/api/strava',   stravaLimiter, stravaRoutes);
+app.use('/api/whoop',    whoopLimiter,  whoopRoutes);
+// Webhook routes: no rate limiter, no session middleware — called by Strava/WHOOP servers
+app.use('/api/webhooks', webhookRoutes);
+app.use('/api/planner',  plannerRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/api/health', (_, res) => res.json({

@@ -379,6 +379,36 @@ export function computeSportMix(activities) {
     }))
 }
 
+// ── Session density ───────────────────────────────────────────────────────────
+
+/**
+ * Returns sessions-per-week and avg session duration (minutes) for each sport type.
+ * Divides total sessions by the number of distinct weeks that have any activity.
+ */
+export function computeSessionDensity(activities) {
+  if (!activities.length) return []
+  const byType = {}
+  const allWeeks = new Set()
+
+  for (const a of activities) {
+    const date = activityDate(a)
+    if (!date) continue
+    const wk = getMonday(new Date(date + 'T12:00:00')).toISOString().split('T')[0]
+    allWeeks.add(wk)
+    const t = a.type || 'Other'
+    if (!byType[t]) byType[t] = { count: 0, totalTime: 0 }
+    byType[t].count++
+    byType[t].totalTime += a.moving_time || 0
+  }
+
+  const weekCount = Math.max(allWeeks.size, 1)
+  return Object.entries(byType).map(([type, d]) => ({
+    type,
+    sessionsPerWeek: +(d.count / weekCount).toFixed(1),
+    avgDurMin:       Math.round(d.totalTime / d.count / 60),
+  }))
+}
+
 // ── Recovery drivers (app-defined decomposition, NOT WHOOP internals) ─────────
 
 /**

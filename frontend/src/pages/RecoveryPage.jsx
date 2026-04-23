@@ -1,63 +1,79 @@
 /**
  * RecoveryPage — Route: /recovery
  * "Why am I fresh or tired?"
+ *
+ * Data sources (Supabase only — no live provider fetches):
+ *   WHOOP metrics  → useSupabaseMetrics()  → daily_metrics table
+ *   Strava activities → useSupabaseActivities() → activities table
+ *
+ * Sections:
+ *  1. WhoopImportPanel (sync status + manual trigger)
+ *  2. Recovery Drivers  |  WHOOP Trends (SmallMultiplesPanel)
+ *  3. Sleep Consistency & Debt (inline chart)
+ *  4. Sleep Score → Next-Day Performance scatter  |  Recovery After Hard Sessions
  */
 import { useMemo } from 'react'
 import {
   ResponsiveContainer, ComposedChart, Line, Bar, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ScatterChart, Scatter, Cell,
 } from 'recharts'
-import { useWhoop }  from '../hooks/useWhoop'
-import { useStrava } from '../hooks/useStrava'
+import { useSupabaseMetrics }     from '../hooks/useSupabaseMetrics'
+import { useSupabaseActivities }  from '../hooks/useSupabaseActivities'
 import { useDateRange } from '../context/DateRangeContext'
 import { sessionRecoveryCost, rollingAvg, SPORT_COLORS } from '../utils/metrics'
 import { msToHHMM, shortDate, recoveryColor } from '../utils/format'
 import {
-  PageWrapper, Card, SectionTitle, TwoCol,
+  PageWrapper, Card, SectionTitle, PanelHeader, TwoCol,
   EmptyNote, Loader, TOOLTIP_STYLE, GRID_STYLE,
 } from '../components/ui'
 import RecoveryDriversChart from '../components/RecoveryDriversChart'
-import SleepMatrixChart     from '../components/SleepMatrixChart'
+import SmallMultiplesPanel  from '../components/SmallMultiplesPanel'
 import RecoveryLagChart     from '../components/RecoveryLagChart'
 import ConnectCard          from '../components/ConnectCard'
+import WhoopImportPanel     from '../components/WhoopImportPanel'
 
 export default function RecoveryPage({ authStatus }) {
   const { filterByDate, filterActivities, label } = useDateRange()
 
-  const { daily: whoopAll, loading: wl } = useWhoop(authStatus?.whoop, 90)
-  const { activities: actsAll, loading: sl } = useStrava(authStatus?.strava, 200)
+  // ── Data from Supabase (no live API calls) ────────────────────────────────
+  const { daily: whoopAll, loading: wl } = useSupabaseMetrics(!!authStatus?.whoop, 90)
+  const { activities: actsAll, loading: sl } = useSupabaseActivities(!!authStatus?.strava, 200)
 
   const loading = wl || sl
 
   const whoopFiltered = useMemo(() => filterByDate(whoopAll),    [whoopAll, filterByDate])
   const actsFiltered  = useMemo(() => filterActivities(actsAll), [actsAll, filterActivities])
 
+  // Latest two WHOOP days for RecoveryDriversChart
   const latest  = whoopAll.length ? whoopAll[whoopAll.length - 1] : null
   const prevDay = whoopAll.length > 1 ? whoopAll[whoopAll.length - 2] : null
 
+  // 28-day baseline for drivers (respiratory_rate omitted — not in daily_metrics yet)
   const baseline = useMemo(() => {
     const w28 = whoopAll.slice(-28)
-    const avg = (key) => {
+    const avg  = (key) => {
       const v = w28.filter(d => d[key] != null)
       return v.length ? v.reduce((s, d) => s + d[key], 0) / v.length : null
     }
-    return { hrv_rmssd: avg('hrv_rmssd'), resting_hr: avg('resting_hr'), respiratory_rate: avg('respiratory_rate') }
+    return { hrv_rmssd: avg('hrv_rmssd'), resting_hr: avg('resting_hr') }
   }, [whoopAll])
 
+  // Sleep consistency chart data
   const sleepTrendData = useMemo(() => {
-    const avgs7      = rollingAvg(whoopFiltered, 'sleep_duration_ms', 7)
-    const rolling7rec = rollingAvg(whoopFiltered, 'recovery_score', 7)
-    const TARGET_MS  = 8 * 3600 * 1000
+    const avgs7       = rollingAvg(whoopFiltered, 'sleep_duration_ms', 7)
+    const TARGET_MS   = 8 * 3600 * 1000
     return whoopFiltered.map((d, i) => ({
       date:  shortDate(d.date),
       durH:  d.sleep_duration_ms != null ? +(d.sleep_duration_ms / 3600000).toFixed(2) : null,
       score: d.sleep_performance,
       avg7H: avgs7[i] != null ? +(avgs7[i] / 3600000).toFixed(2) : null,
-      debtH: d.sleep_duration_ms != null ? +Math.max(0, (TARGET_MS - d.sleep_duration_ms) / 3600000).toFixed(2) : null,
-      rec7:  rolling7rec[i] != null ? +rolling7rec[i].toFixed(1) : null,
+      debtH: d.sleep_duration_ms != null
+        ? +Math.max(0, (TARGET_MS - d.sleep_duration_ms) / 3600000).toFixed(2)
+        : null,
     }))
   }, [whoopFiltered])
 
+  // Sleep → next-day performance scatter (uses DB-backed Strava activities)
   const sleepTrainingPoints = useMemo(() => {
     const dailyMap = {}
     for (const d of whoopAll) dailyMap[d.date] = d
@@ -73,9 +89,11 @@ export default function RecoveryPage({ authStatus }) {
         const kmh = a.distance > 0 && a.moving_time > 0
           ? +((a.distance / 1000) / (a.moving_time / 3600)).toFixed(2) : null
         return { date, type: a.type, sleep: prev.sleep_performance, kmh, name: a.name }
-      }).filter(p => p && p.kmh > 0.5)
+      })
+      .filter(p => p && p.kmh > 0.5)
   }, [whoopAll, actsAll])
 
+  // ── Auth guard ────────────────────────────────────────────────────────────
   if (!authStatus?.whoop) {
     return (
       <PageWrapper>
@@ -89,13 +107,23 @@ export default function RecoveryPage({ authStatus }) {
   return (
     <PageWrapper>
 
-      {/* ── Recovery drivers + Sleep matrix ── */}
+      {/* ── Sync status + manual import trigger ── */}
+      <WhoopImportPanel />
+
+      {/* ── Recovery drivers + WHOOP trend lines ── */}
       <TwoCol>
         <Card>
           <RecoveryDriversChart today={latest} prevDay={prevDay} baseline={baseline} />
         </Card>
-        <Card>
-          <SleepMatrixChart daily={whoopFiltered} count={14} />
+        <Card noPad>
+          <div style={{ padding: '20px 24px 14px' }}>
+            <PanelHeader label={label} title="WHOOP Trends" bottom={0} />
+          </div>
+          {whoopFiltered.length > 1
+            ? <SmallMultiplesPanel data={whoopFiltered} />
+            : <div style={{ padding: '0 24px 20px' }}>
+                <EmptyNote>No WHOOP data for this period. Try widening the date range or importing.</EmptyNote>
+              </div>}
         </Card>
       </TwoCol>
 
@@ -138,7 +166,7 @@ export default function RecoveryPage({ authStatus }) {
         </p>
       </Card>
 
-      {/* ── Sleep→Training scatter + Recovery lag ── */}
+      {/* ── Sleep → next-day performance scatter  |  Recovery lag ── */}
       <TwoCol>
         <Card>
           <SectionTitle title="Sleep Score → Next-Day Performance" note="km/h proxy" />
@@ -180,7 +208,11 @@ export default function RecoveryPage({ authStatus }) {
               </ScatterChart>
             </ResponsiveContainer>
           ) : (
-            <EmptyNote>Need overlapping sleep + activity data to show this chart.</EmptyNote>
+            <EmptyNote>
+              {authStatus?.strava
+                ? 'Need overlapping sleep + activity data to show this chart.'
+                : 'Connect Strava to compare sleep scores with next-day performance.'}
+            </EmptyNote>
           )}
           <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 8 }}>
             Speed proxy = distance ÷ moving time. Most meaningful within a single sport.

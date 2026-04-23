@@ -2,15 +2,19 @@
  * ProgressPage — Route: /progress
  * "Am I improving over time?"
  *
- * NOTE: Data limited to up to 200 most recent Strava activities (no pagination).
+ * Data sources (Supabase only — no live provider fetches):
+ *   Strava activities → useSupabaseActivities() → activities table
+ *   WHOOP metrics     → useSupabaseMetrics()     → daily_metrics table
+ *
+ * NOTE: Data limited to the 200 most recent stored activities.
  */
 import { useState, useMemo } from 'react'
 import {
   ResponsiveContainer, ComposedChart, AreaChart, Area, Line, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts'
-import { useWhoop }  from '../hooks/useWhoop'
-import { useStrava } from '../hooks/useStrava'
+import { useSupabaseMetrics }    from '../hooks/useSupabaseMetrics'
+import { useSupabaseActivities } from '../hooks/useSupabaseActivities'
 import { useDateRange } from '../context/DateRangeContext'
 import {
   computeCumulative, buildMonthlyGrain, buildWeeklyConsistency,
@@ -22,15 +26,17 @@ import {
   PageWrapper, Card, SectionTitle, TwoCol,
   EmptyNote, Loader, PillBtn, TOOLTIP_STYLE, GRID_STYLE,
 } from '../components/ui'
-import ConnectCard from '../components/ConnectCard'
+import ConnectCard      from '../components/ConnectCard'
+import StravaImportPanel from '../components/StravaImportPanel'
+import WhoopImportPanel  from '../components/WhoopImportPanel'
 
 export default function ProgressPage({ authStatus }) {
   const { filterActivities, filterByDate } = useDateRange()
   const [cumulMetric, setCumulMetric] = useState('distance')
   const [sportToggle, setSportToggle] = useState('All')
 
-  const { daily: whoopAll, loading: wl } = useWhoop(authStatus?.whoop, 90)
-  const { activities: actsAll, loading: sl } = useStrava(authStatus?.strava, 200)
+  const { daily: whoopAll, loading: wl } = useSupabaseMetrics(!!authStatus?.whoop, 90)
+  const { activities: actsAll, loading: sl } = useSupabaseActivities(!!authStatus?.strava, 200)
 
   const loading = wl || sl
 
@@ -111,6 +117,10 @@ export default function ProgressPage({ authStatus }) {
 
   return (
     <PageWrapper>
+
+      {/* ── Sync status + manual import triggers ── */}
+      {authStatus?.strava && <StravaImportPanel />}
+      {authStatus?.whoop  && <WhoopImportPanel />}
 
       {/* ── Cumulative fitness ── */}
       <Card>

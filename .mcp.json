@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "shadcn": {
+      "command": "npx",
+      "args": ["shadcn@latest", "mcp"]
+    },
+    "magicuidesign-mcp": {
+      "command": "npx",
+      "args": ["-y", "@magicuidesign/mcp@latest"]
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--project-ref",
+        "iarhfkydssqehodnnpko"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_0ce31a0dff3865fe3b9d7d273716395bee7243be"
+      }
+    }
+  }
+}
