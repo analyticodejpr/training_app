@@ -267,35 +267,50 @@ router.get('/cycles/:id/weeks', async (req, res) => {
 router.delete('/cycles/active', async (req, res) => {
   const userId = req.supabaseUser.id;
   try {
+    // Find the most recent cycle for this user (any status — user may have
+    // a plan in pre_start or completed state they want to clear)
     const { data: cycle, error: cycleErr } = await supabase
       .from('training_plan_cycles')
       .select('id')
       .eq('user_id', userId)
-      .eq('status', 'active')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (cycleErr) throw new Error(cycleErr.message);
-    if (!cycle)   return res.status(404).json({ error: 'No active training plan to delete.' });
+    if (!cycle)   return res.status(404).json({ error: 'No training plan to delete.' });
 
     const cycleId = cycle.id;
 
-    // Delete in dependency order: sessions → days → weeks → blocks → cycle
-    const steps = [
-      supabase.from('training_plan_sessions').delete().eq('user_id', userId).eq('cycle_id', cycleId),
-      // days don't have cycle_id directly — delete via week ids
-    ];
-
-    // Get week ids for this cycle to delete days
-    const { data: weeks } = await supabase
+    // Get week ids so we can cascade to days and sessions
+    const { data: weeks, error: weeksSelectErr } = await supabase
       .from('training_plan_weeks')
       .select('id')
       .eq('cycle_id', cycleId)
       .eq('user_id', userId);
+    if (weeksSelectErr) throw new Error(`weeks fetch: ${weeksSelectErr.message}`);
 
     if (weeks?.length) {
       const weekIds = weeks.map(w => w.id);
+
+      // Get day ids so we can delete sessions (sessions link via day_id)
+      const { data: dayRows, error: daysSelectErr } = await supabase
+        .from('training_plan_days')
+        .select('id')
+        .in('week_id', weekIds)
+        .eq('user_id', userId);
+      if (daysSelectErr) throw new Error(`days fetch: ${daysSelectErr.message}`);
+
+      if (dayRows?.length) {
+        const dayIds = dayRows.map(d => d.id);
+        const { error: sessErr } = await supabase
+          .from('training_plan_sessions')
+          .delete()
+          .in('day_id', dayIds)
+          .eq('user_id', userId);
+        if (sessErr) throw new Error(`sessions delete: ${sessErr.message}`);
+      }
+
       const { error: daysErr } = await supabase
         .from('training_plan_days')
         .delete()
@@ -303,13 +318,6 @@ router.delete('/cycles/active', async (req, res) => {
         .eq('user_id', userId);
       if (daysErr) throw new Error(`days delete: ${daysErr.message}`);
     }
-
-    const { error: sessErr } = await supabase
-      .from('training_plan_sessions')
-      .delete()
-      .eq('user_id', userId)
-      .eq('cycle_id', cycleId);
-    if (sessErr) throw new Error(`sessions delete: ${sessErr.message}`);
 
     const { error: weeksErr } = await supabase
       .from('training_plan_weeks')
