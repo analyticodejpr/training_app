@@ -843,22 +843,30 @@ function ProviderRow({ label, color, conn, confirming, disconnecting, fmtDate, o
   return (
     <div style={s.providerRow}>
       <div style={s.providerLeft}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ ...s.dot, background: connected ? color : 'var(--border-hi)', boxShadow: connected ? `0 0 6px ${color}99` : 'none' }} />
           <span style={{ ...s.providerLabel, color: connected ? color : 'var(--text-muted)' }}>{label}</span>
-          <span style={{ ...s.badge, background: connected ? color + '14' : 'var(--surface-2)', color: connected ? color : 'var(--text-dim)', border: `1px solid ${connected ? color + '28' : 'var(--border)'}` }}>
-            {connected ? 'Connected' : 'Not connected'}
+          <span style={{
+            ...s.badge,
+            background: connected ? color + '14' : 'color-mix(in srgb, var(--bad) 10%, transparent)',
+            color: connected ? color : 'var(--bad)',
+            border: `1px solid ${connected ? color + '28' : 'color-mix(in srgb, var(--bad) 28%, transparent)'}`,
+          }}>
+            {connected ? 'Connected' : 'Disconnected'}
           </span>
         </div>
 
-        {connected && (
-          <div style={s.syncMeta}>
-            {conn.lastSyncedAt
-              ? <span>Last synced {fmtDate(conn.lastSyncedAt)}</span>
-              : <span>Never synced</span>}
-            {conn.connectedAt && <span style={{ opacity: 0.6 }}>· Connected {fmtDate(conn.connectedAt)}</span>}
-          </div>
-        )}
+        <div style={s.syncMeta}>
+          {conn?.lastSyncedAt
+            ? <span style={{ color: connected ? 'var(--text-muted)' : 'var(--text-dim)' }}>
+                Last synced {fmtDate(conn.lastSyncedAt)}
+              </span>
+            : <span style={{ color: 'var(--text-dim)' }}>Never synced</span>
+          }
+          {connected && conn?.connectedAt && (
+            <span style={{ opacity: 0.55 }}>· Connected {fmtDate(conn.connectedAt)}</span>
+          )}
+        </div>
       </div>
 
       <div style={s.providerActions}>

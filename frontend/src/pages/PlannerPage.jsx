@@ -211,16 +211,14 @@ export default function PlannerPage({ authStatus }) {
       {/* ── Plan overview ── */}
       {goal && cycle && !showForm && (
         <>
-          {/* Cycle meta strip */}
-          <Panel pad="flush">
-            <div style={cycleMetaGrid}>
-              <StatCell label="Total Weeks"  value={cycle.total_weeks} />
-              <StatCell label="Starts"       value={formatDate(cycle.start_date)} />
-              <StatCell label="Ends"         value={formatDate(cycle.end_date)} />
-              <StatCell label="Peak Volume"  value={`${cycle.target_peak_week_hours}h`} unit="/wk" />
-              <StatCell label="Blocks"       value={blocks.length} />
-            </div>
-          </Panel>
+          {/* Cycle meta grid */}
+          <div style={cycleMetaGrid}>
+            <StatCell label="Total Weeks"  value={cycle.total_weeks} />
+            <StatCell label="Starts"       value={formatDate(cycle.start_date)} />
+            <StatCell label="Ends"         value={formatDate(cycle.end_date)} />
+            <StatCell label="Peak Volume"  value={`${cycle.target_peak_week_hours}h`} unit="/wk" />
+            <StatCell label="Blocks"       value={blocks.length} />
+          </div>
 
           {/* ── Current week schedule ── */}
           <CurrentWeekSchedule
@@ -1008,11 +1006,37 @@ function Badge({ label, value }) {
 
 function StatCell({ label, value, unit }) {
   return (
-    <div style={{ flex: 1, padding: '14px 18px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, ':last-child': { borderRight: 'none' } }}>
-      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{label}</div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
-        <span className="metric-mono" style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', lineHeight: 1, letterSpacing: '-0.03em' }}>{value}</span>
-        {unit && <span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 500 }}>{unit}</span>}
+    <div style={{
+      background: 'var(--surface)',
+      border: '1px solid var(--border)',
+      borderRadius: 14,
+      padding: '16px 18px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 6,
+      boxShadow: 'var(--shadow-sm)',
+    }}>
+      <div style={{
+        fontSize: 10, fontWeight: 700,
+        letterSpacing: '0.08em', textTransform: 'uppercase',
+        color: 'var(--text-dim)',
+        lineHeight: 1,
+      }}>
+        {label}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, lineHeight: 1 }}>
+        <span className="metric-mono" style={{
+          fontSize: 22, fontWeight: 800,
+          color: 'var(--text)',
+          lineHeight: 1,
+          letterSpacing: '-0.03em',
+          wordBreak: 'break-word',
+        }}>
+          {value}
+        </span>
+        {unit && (
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{unit}</span>
+        )}
       </div>
     </div>
   )
@@ -1084,7 +1108,7 @@ const weekGridStyle = {
 }
 
 const cycleMetaGrid = {
-  display: 'flex',
-  alignItems: 'stretch',
-  overflowX: 'auto',
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+  gap: 10,
 }
