@@ -34,7 +34,13 @@ api.interceptors.response.use(response => {
 })
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-export const getAuthStatus = () => api.get('/auth/status').then(r => r.data)
+export const getAuthStatus = async () => {
+  const { data: { session } } = await supabase.auth.getSession()
+  const sbToken = session?.access_token || ''
+  return api.get('/auth/status', {
+    headers: sbToken ? { 'x-sb-token': sbToken } : {},
+  }).then(r => r.data)
+}
 
 export const disconnectStrava = () =>
   api.delete('/auth/strava/disconnect').then(r => { if (r.data.token) saveToken(r.data.token) })

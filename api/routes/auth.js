@@ -270,10 +270,38 @@ router.get('/whoop/callback', async (req, res) => {
 
 // ── Status & Disconnect ───────────────────────────────────────────────────────
 
-router.get('/status', (req, res) => {
-  res.json({
+router.get('/status', async (req, res) => {
+  const fromSession = {
     strava: !!req.session.strava,
     whoop:  !!req.session.whoop,
+  };
+
+  // If both providers are already in the session token, return immediately.
+  if (fromSession.strava && fromSession.whoop) {
+    return res.json(fromSession);
+  }
+
+  // Fall back to Supabase provider_connections for providers missing from the
+  // session token (e.g. after a fresh Google login where no th_session exists yet).
+  const sbToken = (req.headers['x-sb-token'] || '').trim();
+  if (!sbToken || !supabase) {
+    return res.json(fromSession);
+  }
+
+  const user = await getUserFromToken(sbToken);
+  if (!user) return res.json(fromSession);
+
+  const { data: conns } = await supabase
+    .from('provider_connections')
+    .select('provider')
+    .eq('user_id', user.id)
+    .eq('status', 'active');
+
+  const dbProviders = new Set((conns || []).map(c => c.provider));
+
+  res.json({
+    strava: fromSession.strava || dbProviders.has('strava'),
+    whoop:  fromSession.whoop  || dbProviders.has('whoop'),
   });
 });
 
