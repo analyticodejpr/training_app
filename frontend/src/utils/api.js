@@ -230,6 +230,16 @@ export const getCurrentSchedule = async () => {
   return r.data
 }
 
+/**
+ * Delete the active training plan cycle and all associated data.
+ * The goal is preserved for regeneration.
+ */
+export const deletePlan = async () => {
+  const headers = await supabaseAuthHeaders()
+  const r = await api.delete('/planner/cycles/active', { headers })
+  return r.data
+}
+
 // ── Strava ────────────────────────────────────────────────────────────────────
 export const getStravaAthlete    = () => api.get('/strava/athlete').then(r => r.data)
 export const getStravaActivities = (params = {}) => api.get('/strava/activities', { params }).then(r => r.data)

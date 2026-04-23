@@ -15,7 +15,7 @@
  */
 import { useState } from 'react'
 import { usePlanner, usePlannerGoal, useCurrentWeekSchedule } from '../hooks/usePlanner'
-import { createGoal, generatePlan, generateSchedule } from '../utils/api'
+import { createGoal, generatePlan, generateSchedule, deletePlan } from '../utils/api'
 import {
   PageWrapper, Card, Panel, PanelHeader, SectionTitle,
   Loader, EmptyNote, PillBtn, Inset, MetricBlock,
@@ -61,6 +61,9 @@ export default function PlannerPage({ authStatus }) {
   const [showForm,      setShowForm]      = useState(false)
   const [genSched,      setGenSched]      = useState(false)
   const [genSchedError, setGenSchedError] = useState(null)
+  const [deleting,      setDeleting]      = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleteError,   setDeleteError]   = useState(null)
 
   const loading = goalLoading || planLoading
 
@@ -88,6 +91,22 @@ export default function PlannerPage({ authStatus }) {
       setGenSchedError(err?.response?.data?.error || err.message || 'Schedule generation failed.')
     } finally {
       setGenSched(false)
+    }
+  }
+
+  async function handleDeletePlan() {
+    if (!deleteConfirm) { setDeleteConfirm(true); return }
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deletePlan()
+      setDeleteConfirm(false)
+      setRefetchKey(k => k + 1)
+      setScheduleRefetchKey(k => k + 1)
+    } catch (err) {
+      setDeleteError(err?.response?.data?.error || err.message || 'Delete failed.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -223,8 +242,8 @@ export default function PlannerPage({ authStatus }) {
           {/* Week-level plan grid */}
           {weeks.length > 0 && <WeekGrid weeks={weeks} blocks={blocks} />}
 
-          {/* Regenerate action */}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {/* Regenerate + Delete actions */}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               onClick={handleGenerate}
               disabled={generating}
@@ -232,13 +251,45 @@ export default function PlannerPage({ authStatus }) {
             >
               {generating ? 'Regenerating…' : 'Regenerate Plan'}
             </button>
-            <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-              Regenerating will discard the current plan and create a new one.
-            </span>
+            <button
+              onClick={handleDeletePlan}
+              disabled={deleting}
+              style={{
+                background: deleteConfirm ? 'var(--bad)' : 'var(--surface-2)',
+                color: deleteConfirm ? '#fff' : 'var(--bad)',
+                border: `1px solid ${deleteConfirm ? 'var(--bad)' : 'color-mix(in srgb, var(--bad) 35%, transparent)'}`,
+                borderRadius: 8,
+                padding: '8px 18px',
+                fontSize: 12,
+                fontWeight: 650,
+                cursor: deleting ? 'default' : 'pointer',
+                fontFamily: 'inherit',
+                transition: 'all 0.18s',
+                opacity: deleting ? 0.6 : 1,
+              }}
+              onMouseLeave={() => { if (!deleting) setDeleteConfirm(false) }}
+            >
+              {deleting ? 'Deleting…' : deleteConfirm ? 'Confirm Delete' : 'Delete Plan'}
+            </button>
+            {!deleteConfirm && (
+              <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                Regenerating will create a new plan from the same goal.
+              </span>
+            )}
+            {deleteConfirm && (
+              <span style={{ fontSize: 11, color: 'var(--bad)' }}>
+                This will permanently delete the plan and all sessions.
+              </span>
+            )}
           </div>
           {genError && (
             <div style={{ fontSize: 12, color: 'var(--bad)', background: 'var(--bad-dim)', borderRadius: 8, padding: '10px 14px' }}>
               {genError}
+            </div>
+          )}
+          {deleteError && (
+            <div style={{ fontSize: 12, color: 'var(--bad)', background: 'var(--bad-dim)', borderRadius: 8, padding: '10px 14px' }}>
+              {deleteError}
             </div>
           )}
         </>

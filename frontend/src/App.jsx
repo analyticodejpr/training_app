@@ -1,18 +1,9 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Home, Activity, CalendarDays, User } from 'lucide-react'
-import { getAuthStatus, saveToken } from './utils/api'
+import { getAuthStatus, saveToken, getStravaAthlete } from './utils/api'
 import { DateRangeProvider } from './context/DateRangeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
-
-function ProfileIcon() {
-  const { user } = useAuth()
-  const avatar = user?.user_metadata?.avatar_url
-  if (avatar) {
-    return <img src={avatar} alt="Profile" width={22} height={22} style={{ borderRadius: '50%', objectFit: 'cover' }} />
-  }
-  return <User size={22} strokeWidth={1.7} />
-}
 import TopBar             from './components/TopBar'
 import NameSetupModal     from './components/NameSetupModal'
 import DateRangePicker    from './components/DateRangePicker'
@@ -22,6 +13,13 @@ import LoginPage          from './pages/LoginPage'
 import AuthCallbackPage   from './pages/AuthCallbackPage'
 import DashboardPage      from './pages/DashboardPage'
 
+function ProfileIcon({ src }) {
+  if (src) {
+    return <img src={src} alt="Profile" width={22} height={22} style={{ borderRadius: '50%', objectFit: 'cover' }} />
+  }
+  return <User size={22} strokeWidth={1.7} />
+}
+
 const TrainingPage = lazy(() => import('./pages/TrainingPage'))
 const RecoveryPage = lazy(() => import('./pages/RecoveryPage'))
 const ProgressPage = lazy(() => import('./pages/ProgressPage'))
@@ -29,12 +27,14 @@ const AccountPage  = lazy(() => import('./pages/AccountPage'))
 const StatusPage   = lazy(() => import('./pages/StatusPage'))
 const PlannerPage  = lazy(() => import('./pages/PlannerPage'))
 
-const DOCK_ITEMS = [
-  { href: '/',         label: 'Today',    icon: <Home         size={22} strokeWidth={1.7} /> },
-  { href: '/training', label: 'Training', icon: <Activity     size={22} strokeWidth={1.7} /> },
-  { href: '/planner',  label: 'Planner',  icon: <CalendarDays size={22} strokeWidth={1.7} /> },
-  { href: '/account',  label: 'Profile',  icon: <ProfileIcon /> },
-]
+function buildDockItems(profilePicture) {
+  return [
+    { href: '/',         label: 'Today',    icon: <Home         size={22} strokeWidth={1.7} /> },
+    { href: '/training', label: 'Training', icon: <Activity     size={22} strokeWidth={1.7} /> },
+    { href: '/planner',  label: 'Planner',  icon: <CalendarDays size={22} strokeWidth={1.7} /> },
+    { href: '/account',  label: 'Profile',  icon: <ProfileIcon src={profilePicture} /> },
+  ]
+}
 
 // ── Root: providers only ──────────────────────────────────────────────────────
 export default function App() {
@@ -52,12 +52,14 @@ export default function App() {
 // ── AppShell: uses auth context, owns Strava/WHOOP API state ─────────────────
 function AppShell() {
   const { user, loading: authLoading } = useAuth()
+  const location = useLocation()
 
-  const [authStatus,     setAuthStatus]     = useState(null)
-  const [apiLoading,     setApiLoading]     = useState(true)
-  const [oauthError,     setOauthError]     = useState(null)
-  const [theme,          setTheme]          = useState(() => localStorage.getItem('theme') || 'light')
-  const [showNameSetup,  setShowNameSetup]  = useState(false)
+  const [authStatus,      setAuthStatus]      = useState(null)
+  const [apiLoading,      setApiLoading]      = useState(true)
+  const [oauthError,      setOauthError]      = useState(null)
+  const [theme,           setTheme]           = useState(() => localStorage.getItem('theme') || 'light')
+  const [showNameSetup,   setShowNameSetup]   = useState(false)
+  const [profilePicture,  setProfilePicture]  = useState(null)
   const nameChecked = useRef(false)
 
   useEffect(() => {
@@ -69,6 +71,12 @@ function AppShell() {
     try {
       const s = await getAuthStatus()
       setAuthStatus(s)
+      // Fetch Strava profile picture for dock avatar
+      if (s?.strava) {
+        getStravaAthlete().then(athlete => {
+          if (athlete?.profile_medium) setProfilePicture(athlete.profile_medium)
+        }).catch(() => {})
+      }
     } catch {
       setAuthStatus({ strava: false, whoop: false })
     } finally {
@@ -122,6 +130,9 @@ function AppShell() {
     }
   }, [user])
 
+  // Date range bar is only relevant for data-browsing pages
+  const showDateRange = ['/', '/training'].includes(location.pathname)
+
   // Show splash while either Supabase session OR Express API is resolving
   if (authLoading || (user && apiLoading)) return <Splash />
 
@@ -145,26 +156,28 @@ function AppShell() {
       {/* ── Sticky top bar ── */}
       <TopBar theme={theme} setTheme={setTheme} authStatus={authStatus} onDisconnect={fetchStatus} />
 
-      {/* ── Date range picker bar ── */}
-      <div className="date-range-bar" style={{
-        padding: '12px 28px',
-        borderBottom: '1px solid var(--border)',
-        background: 'var(--surface)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        flexShrink: 0,
-      }}>
-        <span style={{
-          fontSize: 12, fontWeight: 600,
-          color: 'var(--text-dim)',
-          letterSpacing: '-0.01em',
-          whiteSpace: 'nowrap',
+      {/* ── Date range picker bar — only on Today and Training pages ── */}
+      {showDateRange && (
+        <div className="date-range-bar" style={{
+          padding: '12px 28px',
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--surface)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          flexShrink: 0,
         }}>
-          Date range
-        </span>
-        <DateRangePicker />
-      </div>
+          <span style={{
+            fontSize: 12, fontWeight: 600,
+            color: 'var(--text-dim)',
+            letterSpacing: '-0.01em',
+            whiteSpace: 'nowrap',
+          }}>
+            Date range
+          </span>
+          <DateRangePicker />
+        </div>
+      )}
 
       {/* ── OAuth error banner ── */}
       {oauthError && (
@@ -210,7 +223,7 @@ function AppShell() {
       </main>
 
       {/* ── Floating dock ── */}
-      <FloatingDock items={DOCK_ITEMS} />
+      <FloatingDock items={buildDockItems(profilePicture)} />
 
       {/* ── Name setup modal (shown once if full_name is missing) ── */}
       {showNameSetup && (

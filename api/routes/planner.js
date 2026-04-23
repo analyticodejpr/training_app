@@ -256,6 +256,89 @@ router.get('/cycles/:id/weeks', async (req, res) => {
   }
 });
 
+// ── DELETE /api/planner/cycles/active ────────────────────────────────────────
+/**
+ * Delete the user's active training plan cycle and all associated data
+ * (blocks, weeks, days, sessions). The goal is preserved so the user can
+ * regenerate a new plan from it.
+ *
+ * Returns 404 if no active cycle exists.
+ */
+router.delete('/cycles/active', async (req, res) => {
+  const userId = req.supabaseUser.id;
+  try {
+    const { data: cycle, error: cycleErr } = await supabase
+      .from('training_plan_cycles')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (cycleErr) throw new Error(cycleErr.message);
+    if (!cycle)   return res.status(404).json({ error: 'No active training plan to delete.' });
+
+    const cycleId = cycle.id;
+
+    // Delete in dependency order: sessions → days → weeks → blocks → cycle
+    const steps = [
+      supabase.from('training_plan_sessions').delete().eq('user_id', userId).eq('cycle_id', cycleId),
+      // days don't have cycle_id directly — delete via week ids
+    ];
+
+    // Get week ids for this cycle to delete days
+    const { data: weeks } = await supabase
+      .from('training_plan_weeks')
+      .select('id')
+      .eq('cycle_id', cycleId)
+      .eq('user_id', userId);
+
+    if (weeks?.length) {
+      const weekIds = weeks.map(w => w.id);
+      const { error: daysErr } = await supabase
+        .from('training_plan_days')
+        .delete()
+        .in('week_id', weekIds)
+        .eq('user_id', userId);
+      if (daysErr) throw new Error(`days delete: ${daysErr.message}`);
+    }
+
+    const { error: sessErr } = await supabase
+      .from('training_plan_sessions')
+      .delete()
+      .eq('user_id', userId)
+      .eq('cycle_id', cycleId);
+    if (sessErr) throw new Error(`sessions delete: ${sessErr.message}`);
+
+    const { error: weeksErr } = await supabase
+      .from('training_plan_weeks')
+      .delete()
+      .eq('cycle_id', cycleId)
+      .eq('user_id', userId);
+    if (weeksErr) throw new Error(`weeks delete: ${weeksErr.message}`);
+
+    const { error: blocksErr } = await supabase
+      .from('training_plan_blocks')
+      .delete()
+      .eq('cycle_id', cycleId)
+      .eq('user_id', userId);
+    if (blocksErr) throw new Error(`blocks delete: ${blocksErr.message}`);
+
+    const { error: cycleDelErr } = await supabase
+      .from('training_plan_cycles')
+      .delete()
+      .eq('id', cycleId)
+      .eq('user_id', userId);
+    if (cycleDelErr) throw new Error(`cycle delete: ${cycleDelErr.message}`);
+
+    res.json({ ok: true, deleted: cycleId });
+  } catch (err) {
+    console.error('[planner/cycles/delete]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/planner/schedule/generate ──────────────────────────────────────
 /**
  * Generate (or regenerate) the current-week session schedule from the

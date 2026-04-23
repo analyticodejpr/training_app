@@ -752,7 +752,7 @@ function planCycle(goal, features, athleteState) {
 
   // ── Start / end dates ────────────────────────────────────────────────────────
 
-  const startDate = nextMonday(new Date());
+  const startDate = new Date();
   const endDate   = addWeeks(startDate, totalWeeks);
 
   return {
