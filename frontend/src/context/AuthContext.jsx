@@ -9,13 +9,9 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(undefined)
 
   useEffect(() => {
-    // Hydrate from stored session immediately
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-    })
-
-    // Stay in sync with Supabase auth events (sign in, sign out, token refresh)
+    // onAuthStateChange fires INITIAL_SESSION on mount with the current session,
+    // so user stays `undefined` (loading) until that first event — preventing
+    // the brief sign-in page flash while a token refresh completes.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)

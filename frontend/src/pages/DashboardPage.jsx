@@ -9,6 +9,8 @@
  * 5. Full width       — Recent Activities
  */
 import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useCurrentWeekSchedule } from '../hooks/usePlanner'
 import { NumberTicker } from '../components/ui/number-ticker'
 import { AnimatedCircularProgressBar } from '../components/ui/animated-circular-progress-bar'
 import { useSupabaseMetrics }    from '../hooks/useSupabaseMetrics'
@@ -182,6 +184,12 @@ export default function DashboardPage({ authStatus }) {
         </Panel>
       )}
 
+      {/* ── Zone 6: Weekly Schedule ── */}
+      <Panel>
+        <PanelHeader title="This Week" note="Training Schedule" />
+        <WeekScheduleWidget />
+      </Panel>
+
     </PageWrapper>
   )
 }
@@ -321,6 +329,167 @@ function KPICard({ eyebrow, label, value, unit, color = 'var(--text)', badge, de
           </span>
         )}
       </div>
+    </div>
+  )
+}
+
+// ── Weekly schedule widget ────────────────────────────────────────────────────
+
+function WeekScheduleWidget() {
+  const navigate = useNavigate()
+  const { lifecycle, days, sessions, loading } = useCurrentWeekSchedule()
+  const today = new Date().toISOString().slice(0, 10)
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0' }}>
+        <Loader />
+      </div>
+    )
+  }
+
+  const hasDays = days.length > 0
+
+  if (!lifecycle || lifecycle === 'no_plan' || (!hasDays && lifecycle !== 'active')) {
+    return (
+      <div style={{ textAlign: 'center', padding: '28px 20px' }}>
+        <div style={{ fontSize: 32, marginBottom: 10, opacity: 0.35 }}>📅</div>
+        <div style={{ fontSize: 14, fontWeight: 650, color: 'var(--text)', marginBottom: 6, letterSpacing: '-0.02em' }}>
+          No training plan yet
+        </div>
+        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 18, lineHeight: 1.55, fontWeight: 450, maxWidth: 280, margin: '0 auto 18px' }}>
+          Build a personalised weekly schedule tailored to your fitness level and goals.
+        </p>
+        <button
+          onClick={() => navigate('/planner')}
+          style={{
+            padding: '9px 22px',
+            borderRadius: 10,
+            background: 'var(--accent)',
+            color: '#fff',
+            fontWeight: 650,
+            fontSize: 13,
+            border: 'none',
+            cursor: 'pointer',
+            letterSpacing: '-0.01em',
+            fontFamily: 'inherit',
+          }}
+        >
+          Create a Plan →
+        </button>
+      </div>
+    )
+  }
+
+  if (hasDays) {
+    return (
+      <div className="schedule-scroll">
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, 1fr)',
+          gap: 6,
+          minWidth: 420,
+        }}>
+          {days.map(day => {
+            const session = sessions.find(s => s.day_id === day.id)
+            const isToday = day.day_date === today
+            const isPast  = day.day_date < today
+            return (
+              <MiniDayCard
+                key={day.id}
+                day={day}
+                session={session}
+                isToday={isToday}
+                isPast={isPast}
+              />
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // Active plan but schedule not generated yet
+  return (
+    <div style={{ textAlign: 'center', padding: '22px 20px' }}>
+      <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 14, fontWeight: 450 }}>
+        Your plan is ready — generate this week's schedule in the Planner.
+      </p>
+      <button
+        onClick={() => navigate('/planner')}
+        style={{
+          padding: '8px 20px',
+          borderRadius: 10,
+          background: 'var(--accent)',
+          color: '#fff',
+          fontWeight: 650,
+          fontSize: 13,
+          border: 'none',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}
+      >
+        Go to Planner →
+      </button>
+    </div>
+  )
+}
+
+function MiniDayCard({ day, session, isToday, isPast }) {
+  const d        = new Date(day.day_date + 'T12:00:00')
+  const dayLabel = d.toLocaleDateString('en', { weekday: 'short' })
+  const dateNum  = d.getDate()
+
+  const dotColor = session?.is_key_session
+    ? '#ef4444'
+    : session
+      ? 'var(--accent)'
+      : 'var(--border-hi)'
+
+  const sessionLabel = session
+    ? (session.session_name || session.session_type || 'Train').slice(0, 9)
+    : 'Rest'
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+      padding: '10px 4px',
+      borderRadius: 10,
+      background: isToday ? 'var(--accent-dim)' : 'var(--surface-2)',
+      border: `1px solid ${isToday
+        ? 'color-mix(in srgb, var(--accent) 30%, transparent)'
+        : 'var(--border)'}`,
+      opacity: isPast ? 0.5 : 1,
+      transition: 'opacity 0.15s',
+      minWidth: 0,
+    }}>
+      <span style={{
+        fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
+        letterSpacing: '0.05em', lineHeight: 1,
+        color: isToday ? 'var(--accent)' : 'var(--text-dim)',
+      }}>
+        {dayLabel}
+      </span>
+      <span style={{
+        fontSize: 15, fontWeight: 800, lineHeight: 1.1,
+        color: isToday ? 'var(--accent)' : 'var(--text)',
+      }}>
+        {dateNum}
+      </span>
+      <div style={{
+        width: 5, height: 5, borderRadius: '50%',
+        background: dotColor,
+        margin: '1px 0',
+        boxShadow: session?.is_key_session ? `0 0 5px ${dotColor}` : 'none',
+      }} />
+      <span style={{
+        fontSize: 8, color: 'var(--text-muted)', fontWeight: 500,
+        textAlign: 'center', lineHeight: 1.2,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        maxWidth: '100%', paddingInline: 2,
+      }}>
+        {sessionLabel}
+      </span>
     </div>
   )
 }

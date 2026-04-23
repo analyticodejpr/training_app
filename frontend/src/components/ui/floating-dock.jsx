@@ -168,10 +168,9 @@ function MobileDock({ items }) {
             end={item.href === '/'}
             style={{
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
-              gap: 3,
-              padding: '6px 16px',
+              justifyContent: 'center',
+              width: 52, height: 44,
               borderRadius: 12,
               background: isActive ? 'var(--accent-dim)' : 'transparent',
               textDecoration: 'none',
@@ -180,13 +179,6 @@ function MobileDock({ items }) {
           >
             <span style={{ color: isActive ? 'var(--accent)' : 'var(--text-dim)', display: 'flex' }}>
               {item.icon}
-            </span>
-            <span style={{
-              fontSize: 10, fontWeight: 600,
-              color: isActive ? 'var(--accent)' : 'var(--text-dim)',
-              letterSpacing: '0.02em',
-            }}>
-              {item.label}
             </span>
           </NavLink>
         )

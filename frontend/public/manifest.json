@@ -1,6 +1,6 @@
 {
-  "name": "TrainingHub",
-  "short_name": "TrainingHub",
+  "name": "ZONE",
+  "short_name": "ZONE",
   "description": "Strava + WHOOP performance dashboard",
   "start_url": "/",
   "display": "standalone",

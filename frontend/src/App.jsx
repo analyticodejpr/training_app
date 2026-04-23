@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { Home, Activity, Heart, TrendingUp, CalendarDays } from 'lucide-react'
+import { Home, Activity, CalendarDays, User } from 'lucide-react'
 import { getAuthStatus, saveToken } from './utils/api'
 import { DateRangeProvider } from './context/DateRangeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -21,11 +21,10 @@ const StatusPage   = lazy(() => import('./pages/StatusPage'))
 const PlannerPage  = lazy(() => import('./pages/PlannerPage'))
 
 const DOCK_ITEMS = [
-  { href: '/',         label: 'Today',    icon: <Home         size={20} strokeWidth={1.7} /> },
-  { href: '/training', label: 'Training', icon: <Activity     size={20} strokeWidth={1.7} /> },
-  { href: '/recovery', label: 'Recovery', icon: <Heart        size={20} strokeWidth={1.7} /> },
-  { href: '/progress', label: 'Progress', icon: <TrendingUp   size={20} strokeWidth={1.7} /> },
-  { href: '/planner',  label: 'Planner',  icon: <CalendarDays size={20} strokeWidth={1.7} /> },
+  { href: '/',         label: 'Today',    icon: <Home         size={22} strokeWidth={1.7} /> },
+  { href: '/training', label: 'Training', icon: <Activity     size={22} strokeWidth={1.7} /> },
+  { href: '/planner',  label: 'Planner',  icon: <CalendarDays size={22} strokeWidth={1.7} /> },
+  { href: '/account',  label: 'Profile',  icon: <User         size={22} strokeWidth={1.7} /> },
 ]
 
 // ── Root: providers only ──────────────────────────────────────────────────────
@@ -135,12 +134,7 @@ function AppShell() {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
       {/* ── Sticky top bar ── */}
-      <TopBar
-        authStatus={authStatus}
-        onDisconnect={fetchStatus}
-        theme={theme}
-        setTheme={setTheme}
-      />
+      <TopBar theme={theme} setTheme={setTheme} />
 
       {/* ── Date range picker bar ── */}
       <div className="date-range-bar" style={{
@@ -229,7 +223,23 @@ const spinStyle = {
 
 function Splash() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 14 }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      height: '100vh', gap: 24,
+      background: 'var(--bg)',
+    }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+        <img src="/logo.svg" alt="" width={52} height={52} style={{ borderRadius: 14, opacity: 0.92 }} />
+        <span style={{
+          fontSize: 34, fontWeight: 900,
+          letterSpacing: '-0.06em',
+          color: 'var(--text)',
+          lineHeight: 1,
+        }}>
+          Z<span style={{ color: 'var(--accent)' }}>O</span>NE
+        </span>
+      </div>
       <div style={spinStyle} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
