@@ -105,13 +105,41 @@ async function generateAndPersistPlan(userId, goalId) {
     .single();
   if (featErr) throw new Error(`features insert: ${featErr.message}`);
 
-  // ── 8. Cancel any existing active cycle for this user ────────────────────
-  const { error: cancelErr } = await supabase
-    .from('training_plan_cycles')
-    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-    .eq('user_id', userId)
-    .eq('status', 'active');
-  if (cancelErr) throw new Error(`cancel existing cycle: ${cancelErr.message}`);
+  // ── 8. Delete any existing plan data for this user ───────────────────────
+  // Cascade: sessions → days → weeks → blocks → cycles
+  const { data: existingWeeks } = await supabase
+    .from('training_plan_weeks').select('id').eq('user_id', userId);
+
+  if (existingWeeks?.length) {
+    const weekIds = existingWeeks.map(w => w.id);
+    const { data: existingDays } = await supabase
+      .from('training_plan_days').select('id')
+      .in('week_id', weekIds).eq('user_id', userId);
+
+    if (existingDays?.length) {
+      const { error: sessErr } = await supabase
+        .from('training_plan_sessions').delete()
+        .in('day_id', existingDays.map(d => d.id)).eq('user_id', userId);
+      if (sessErr) throw new Error(`clear sessions: ${sessErr.message}`);
+    }
+
+    const { error: daysErr } = await supabase
+      .from('training_plan_days').delete()
+      .in('week_id', weekIds).eq('user_id', userId);
+    if (daysErr) throw new Error(`clear days: ${daysErr.message}`);
+  }
+
+  const { error: clearWeeksErr } = await supabase
+    .from('training_plan_weeks').delete().eq('user_id', userId);
+  if (clearWeeksErr) throw new Error(`clear weeks: ${clearWeeksErr.message}`);
+
+  const { error: clearBlocksErr } = await supabase
+    .from('training_plan_blocks').delete().eq('user_id', userId);
+  if (clearBlocksErr) throw new Error(`clear blocks: ${clearBlocksErr.message}`);
+
+  const { error: clearCyclesErr } = await supabase
+    .from('training_plan_cycles').delete().eq('user_id', userId);
+  if (clearCyclesErr) throw new Error(`clear cycles: ${clearCyclesErr.message}`);
 
   // ── 9. Persist cycle ──────────────────────────────────────────────────────
   const cyclePayload = {

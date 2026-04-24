@@ -26,6 +26,47 @@ const router = express.Router();
 // All planner routes require a valid Supabase user
 router.use(requireSupabaseUser);
 
+/**
+ * Delete all cycle-related plan data for a user.
+ * Cascades sessions → days → weeks → blocks → cycles.
+ * Does nothing (no error) if the user has no plan rows.
+ */
+async function deletePlanData(db, userId) {
+  const { data: weeks } = await db
+    .from('training_plan_weeks').select('id').eq('user_id', userId);
+
+  if (weeks?.length) {
+    const weekIds = weeks.map(w => w.id);
+    const { data: days } = await db
+      .from('training_plan_days').select('id')
+      .in('week_id', weekIds).eq('user_id', userId);
+
+    if (days?.length) {
+      const { error: sessErr } = await db
+        .from('training_plan_sessions').delete()
+        .in('day_id', days.map(d => d.id)).eq('user_id', userId);
+      if (sessErr) throw new Error(`sessions delete: ${sessErr.message}`);
+    }
+
+    const { error: daysErr } = await db
+      .from('training_plan_days').delete()
+      .in('week_id', weekIds).eq('user_id', userId);
+    if (daysErr) throw new Error(`days delete: ${daysErr.message}`);
+  }
+
+  const { error: weeksErr } = await db
+    .from('training_plan_weeks').delete().eq('user_id', userId);
+  if (weeksErr) throw new Error(`weeks delete: ${weeksErr.message}`);
+
+  const { error: blocksErr } = await db
+    .from('training_plan_blocks').delete().eq('user_id', userId);
+  if (blocksErr) throw new Error(`blocks delete: ${blocksErr.message}`);
+
+  const { error: cyclesErr } = await db
+    .from('training_plan_cycles').delete().eq('user_id', userId);
+  if (cyclesErr) throw new Error(`cycles delete: ${cyclesErr.message}`);
+}
+
 // ── POST /api/planner/goals ───────────────────────────────────────────────────
 /**
  * Create (or replace) the user's active training goal.
@@ -71,13 +112,12 @@ router.post('/goals', async (req, res) => {
   }
 
   try {
-    // Cancel any existing active goal
+    // Delete any existing goal (no cancelled rows kept)
     const { error: cancelErr } = await supabase
       .from('training_goals')
-      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .eq('status', 'active');
-    if (cancelErr) throw new Error(`cancel existing goal: ${cancelErr.message}`);
+      .delete()
+      .eq('user_id', userId);
+    if (cancelErr) throw new Error(`delete existing goal: ${cancelErr.message}`);
 
     // Insert new goal
     const payload = {
@@ -258,89 +298,16 @@ router.get('/cycles/:id/weeks', async (req, res) => {
 
 // ── DELETE /api/planner/cycles/active ────────────────────────────────────────
 /**
- * Delete the user's active training plan cycle and all associated data
- * (blocks, weeks, days, sessions). The goal is preserved so the user can
- * regenerate a new plan from it.
+ * Delete ALL training plan data for the user (cycles, blocks, weeks, days,
+ * sessions). The goal is preserved so the user can regenerate.
  *
- * Returns 404 if no active cycle exists.
+ * Deletes by user_id — never returns 404.
  */
 router.delete('/cycles/active', async (req, res) => {
   const userId = req.supabaseUser.id;
   try {
-    // Find the most recent cycle for this user (any status — user may have
-    // a plan in pre_start or completed state they want to clear)
-    const { data: cycle, error: cycleErr } = await supabase
-      .from('training_plan_cycles')
-      .select('id')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (cycleErr) throw new Error(cycleErr.message);
-    if (!cycle)   return res.status(404).json({ error: 'No training plan to delete.' });
-
-    const cycleId = cycle.id;
-
-    // Get week ids so we can cascade to days and sessions
-    const { data: weeks, error: weeksSelectErr } = await supabase
-      .from('training_plan_weeks')
-      .select('id')
-      .eq('cycle_id', cycleId)
-      .eq('user_id', userId);
-    if (weeksSelectErr) throw new Error(`weeks fetch: ${weeksSelectErr.message}`);
-
-    if (weeks?.length) {
-      const weekIds = weeks.map(w => w.id);
-
-      // Get day ids so we can delete sessions (sessions link via day_id)
-      const { data: dayRows, error: daysSelectErr } = await supabase
-        .from('training_plan_days')
-        .select('id')
-        .in('week_id', weekIds)
-        .eq('user_id', userId);
-      if (daysSelectErr) throw new Error(`days fetch: ${daysSelectErr.message}`);
-
-      if (dayRows?.length) {
-        const dayIds = dayRows.map(d => d.id);
-        const { error: sessErr } = await supabase
-          .from('training_plan_sessions')
-          .delete()
-          .in('day_id', dayIds)
-          .eq('user_id', userId);
-        if (sessErr) throw new Error(`sessions delete: ${sessErr.message}`);
-      }
-
-      const { error: daysErr } = await supabase
-        .from('training_plan_days')
-        .delete()
-        .in('week_id', weekIds)
-        .eq('user_id', userId);
-      if (daysErr) throw new Error(`days delete: ${daysErr.message}`);
-    }
-
-    const { error: weeksErr } = await supabase
-      .from('training_plan_weeks')
-      .delete()
-      .eq('cycle_id', cycleId)
-      .eq('user_id', userId);
-    if (weeksErr) throw new Error(`weeks delete: ${weeksErr.message}`);
-
-    const { error: blocksErr } = await supabase
-      .from('training_plan_blocks')
-      .delete()
-      .eq('cycle_id', cycleId)
-      .eq('user_id', userId);
-    if (blocksErr) throw new Error(`blocks delete: ${blocksErr.message}`);
-
-    const { error: cycleDelErr } = await supabase
-      .from('training_plan_cycles')
-      .delete()
-      .eq('id', cycleId)
-      .eq('user_id', userId);
-    if (cycleDelErr) throw new Error(`cycle delete: ${cycleDelErr.message}`);
-
-    res.json({ ok: true, deleted: cycleId });
+    await deletePlanData(supabase, userId);
+    res.json({ ok: true });
   } catch (err) {
     console.error('[planner/cycles/delete]', err.message);
     res.status(500).json({ error: err.message });
