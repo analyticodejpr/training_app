@@ -83,32 +83,14 @@ router.post('/import-90', requireSupabaseUser, async (req, res) => {
 
 /**
  * DELETE /api/whoop/disconnect
- * Removes the WHOOP connection and deletes all WHOOP-owned data for the user:
- *   - daily_metrics    (all rows — WHOOP is the only source for this table)
- *   - source_records   (provider = 'whoop')
- *   - provider_connections (provider = 'whoop')
+ * Soft-disconnects WHOOP: removes only the provider_connections row so future
+ * syncs stop, but preserves all existing daily_metrics and source_records data.
  *
- * Requires a valid Supabase user JWT. Uses the service-role client.
+ * Returns an updated session token (whoop cleared) so the frontend stays in sync.
  */
 router.delete('/disconnect', requireSupabaseUser, async (req, res) => {
   const userId = req.supabaseUser.id;
   try {
-    // 1. Delete normalized daily metrics (WHOOP is the sole source)
-    const { error: metricsErr } = await supabase
-      .from('daily_metrics')
-      .delete()
-      .eq('user_id', userId);
-    if (metricsErr) throw new Error(`daily_metrics delete: ${metricsErr.message}`);
-
-    // 2. Delete raw source payloads
-    const { error: srcErr } = await supabase
-      .from('source_records')
-      .delete()
-      .eq('user_id', userId)
-      .eq('provider', 'whoop');
-    if (srcErr) throw new Error(`source_records delete: ${srcErr.message}`);
-
-    // 3. Remove the connection row itself
     const { error: connErr } = await supabase
       .from('provider_connections')
       .delete()
@@ -116,7 +98,9 @@ router.delete('/disconnect', requireSupabaseUser, async (req, res) => {
       .eq('provider', 'whoop');
     if (connErr) throw new Error(`provider_connections delete: ${connErr.message}`);
 
-    console.log(`[whoop/disconnect] removed all WHOOP data for user ${userId}`);
+    // Return a new session token with whoop cleared so TopBar updates immediately
+    res.setSession({ ...req.session, whoop: null });
+    console.log(`[whoop/disconnect] disconnected WHOOP for user ${userId} (data preserved)`);
     res.json({ ok: true });
   } catch (err) {
     console.error('[whoop/disconnect]', err.message);

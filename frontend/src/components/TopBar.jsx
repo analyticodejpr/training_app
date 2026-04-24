@@ -4,7 +4,7 @@
  * Right: Strava connect · WHOOP connect · theme toggle
  */
 import { useState } from 'react'
-import { connectStrava, connectWhoop, disconnectStrava, disconnectWhoop } from '../utils/api'
+import { connectStrava, connectWhoop, disconnectStravaData, disconnectWhoopData } from '../utils/api'
 
 export default function TopBar({ authStatus, onDisconnect, theme, setTheme }) {
   const [confirming, setConfirming] = useState(null)
@@ -12,8 +12,12 @@ export default function TopBar({ authStatus, onDisconnect, theme, setTheme }) {
 
   async function handleDisconnect(provider) {
     if (confirming !== provider) { setConfirming(provider); return }
-    if (provider === 'strava') await disconnectStrava()
-    else await disconnectWhoop()
+    try {
+      if (provider === 'strava') await disconnectStravaData()
+      else await disconnectWhoopData()
+    } catch {
+      // ignore — connection dot will stay as-is; user can retry
+    }
     setConfirming(null)
     onDisconnect?.()
   }

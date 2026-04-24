@@ -3,6 +3,7 @@ const axios    = require('axios');
 const crypto   = require('crypto');
 const { encrypt, decrypt } = require('../tokenCrypto');
 const { supabase, getUserFromToken } = require('../db/supabase');
+const { requireSupabaseUser } = require('../middleware/requireSupabaseUser');
 
 const router = express.Router();
 
@@ -313,6 +314,63 @@ router.delete('/strava/disconnect', (req, res) => {
 router.delete('/whoop/disconnect', (req, res) => {
   const session = { ...req.session, whoop: null };
   res.json({ ok: true, token: encrypt(session) });
+});
+
+// ── DELETE /api/auth/user-data ────────────────────────────────────────────────
+/**
+ * Deletes ALL data for the current user from every application table.
+ * Provider connections are removed so future syncs stop.
+ * The Supabase Auth account and profile row are preserved (user stays logged in).
+ *
+ * Requires a valid Supabase JWT via X-Supabase-Token header.
+ * Returns an empty session token so TopBar connection dots clear immediately.
+ */
+router.delete('/user-data', requireSupabaseUser, async (req, res) => {
+  const userId = req.supabaseUser.id;
+  try {
+    // ── Planner cascade: sessions → days → weeks/blocks → cycles → goals ─────
+    const { data: weeks } = await supabase
+      .from('training_plan_weeks')
+      .select('id')
+      .eq('user_id', userId);
+
+    if (weeks?.length) {
+      const weekIds = weeks.map(w => w.id);
+      const { data: days } = await supabase
+        .from('training_plan_days')
+        .select('id')
+        .in('week_id', weekIds)
+        .eq('user_id', userId);
+
+      if (days?.length) {
+        await supabase.from('training_plan_sessions').delete()
+          .in('day_id', days.map(d => d.id)).eq('user_id', userId);
+      }
+      await supabase.from('training_plan_days').delete()
+        .in('week_id', weekIds).eq('user_id', userId);
+    }
+
+    await supabase.from('training_plan_weeks').delete().eq('user_id', userId);
+    await supabase.from('training_plan_blocks').delete().eq('user_id', userId);
+    await supabase.from('training_plan_cycles').delete().eq('user_id', userId);
+    await supabase.from('training_goals').delete().eq('user_id', userId);
+    await supabase.from('athlete_context_snapshots').delete().eq('user_id', userId);
+    await supabase.from('derived_training_features').delete().eq('user_id', userId);
+
+    // ── Provider data ─────────────────────────────────────────────────────────
+    await supabase.from('activities').delete().eq('user_id', userId);
+    await supabase.from('daily_metrics').delete().eq('user_id', userId);
+    await supabase.from('source_records').delete().eq('user_id', userId);
+    await supabase.from('provider_connections').delete().eq('user_id', userId);
+
+    // Return an empty session token so connection dots go grey immediately
+    res.setSession({});
+    console.log(`[auth/user-data] deleted all data for user ${userId}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[auth/user-data]', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

@@ -110,34 +110,14 @@ router.post('/import-recent', requireSupabaseUser, async (req, res) => {
 
 /**
  * DELETE /api/strava/disconnect
- * Removes the Strava connection and deletes all Strava-owned data for the user:
- *   - activities       (source_primary = 'strava')
- *   - source_records   (provider = 'strava')
- *   - provider_connections (provider = 'strava')
+ * Soft-disconnects Strava: removes only the provider_connections row so future
+ * syncs stop, but preserves all existing activities and source_records data.
  *
- * Requires a valid Supabase user JWT. Uses the service-role client so RLS
- * doesn't interfere with the delete operations.
+ * Returns an updated session token (strava cleared) so the frontend stays in sync.
  */
 router.delete('/disconnect', requireSupabaseUser, async (req, res) => {
   const userId = req.supabaseUser.id;
   try {
-    // 1. Delete normalized activity rows
-    const { error: actsErr } = await supabase
-      .from('activities')
-      .delete()
-      .eq('user_id', userId)
-      .eq('source_primary', 'strava');
-    if (actsErr) throw new Error(`activities delete: ${actsErr.message}`);
-
-    // 2. Delete raw source payloads
-    const { error: srcErr } = await supabase
-      .from('source_records')
-      .delete()
-      .eq('user_id', userId)
-      .eq('provider', 'strava');
-    if (srcErr) throw new Error(`source_records delete: ${srcErr.message}`);
-
-    // 3. Remove the connection row itself
     const { error: connErr } = await supabase
       .from('provider_connections')
       .delete()
@@ -145,7 +125,9 @@ router.delete('/disconnect', requireSupabaseUser, async (req, res) => {
       .eq('provider', 'strava');
     if (connErr) throw new Error(`provider_connections delete: ${connErr.message}`);
 
-    console.log(`[strava/disconnect] removed all Strava data for user ${userId}`);
+    // Return a new session token with strava cleared so TopBar updates immediately
+    res.setSession({ ...req.session, strava: null });
+    console.log(`[strava/disconnect] disconnected Strava for user ${userId} (data preserved)`);
     res.json({ ok: true });
   } catch (err) {
     console.error('[strava/disconnect]', err.message);

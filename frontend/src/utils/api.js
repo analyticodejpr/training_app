@@ -240,6 +240,17 @@ export const deletePlan = async () => {
   return r.data
 }
 
+/**
+ * Delete ALL user data from every application table (activities, metrics,
+ * planner data, provider connections). The Supabase account is preserved.
+ * Returns a new empty session token (saved automatically by the axios interceptor).
+ */
+export const deleteAllUserData = async () => {
+  const headers = await supabaseAuthHeaders()
+  const r = await api.delete('/auth/user-data', { headers })
+  return r.data
+}
+
 // ── Strava ────────────────────────────────────────────────────────────────────
 export const getStravaAthlete    = () => api.get('/strava/athlete').then(r => r.data)
 export const getStravaActivities = (params = {}) => api.get('/strava/activities', { params }).then(r => r.data)

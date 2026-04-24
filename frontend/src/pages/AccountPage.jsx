@@ -80,6 +80,9 @@ import {
   getWhoopConnection,
   disconnectStravaData,
   disconnectWhoopData,
+  importStrava90Days,
+  importWhoop90Days,
+  deleteAllUserData,
   connectStrava,
   connectWhoop,
 } from '../utils/api'
@@ -96,6 +99,10 @@ export default function AccountPage({ onProviderChange }) {
   // confirming: null | 'strava' | 'whoop'
   const [confirming,    setConfirming]    = useState(null)
   const [disconnecting, setDisconnecting] = useState(null)
+  const [importing,     setImporting]     = useState(null)  // null | 'strava' | 'whoop'
+  const [importResult,  setImportResult]  = useState(null)  // { provider, count } | null
+  const [deletingAll,   setDeletingAll]   = useState(false)
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false)
   const [error,         setError]         = useState(null)
 
   // Edit mode
@@ -146,6 +153,51 @@ export default function AccountPage({ onProviderChange }) {
     } finally {
       setDisconnecting(null)
       setConfirming(null)
+    }
+  }
+
+  async function handleImport90(provider) {
+    setImporting(provider)
+    setImportResult(null)
+    setError(null)
+    try {
+      const result = provider === 'strava'
+        ? await importStrava90Days()
+        : await importWhoop90Days()
+      setImportResult({ provider, count: result.imported ?? result.count ?? 0 })
+      // Refresh connection status to update lastSyncedAt
+      const [strava, whoop] = await Promise.all([
+        getStravaConnection().catch(() => null),
+        getWhoopConnection().catch(() => null),
+      ])
+      setStravaConn(strava)
+      setWhoopConn(whoop)
+    } catch (err) {
+      setError(`Import failed: ${err.response?.data?.error || err.message}`)
+    } finally {
+      setImporting(null)
+    }
+  }
+
+  async function handleDeleteAllData() {
+    if (!confirmDeleteAll) { setConfirmDeleteAll(true); return }
+    setDeletingAll(true)
+    setError(null)
+    try {
+      await deleteAllUserData()
+      // Reset connection state and notify parent (TopBar will refresh)
+      const [strava, whoop] = await Promise.all([
+        getStravaConnection().catch(() => null),
+        getWhoopConnection().catch(() => null),
+      ])
+      setStravaConn(strava)
+      setWhoopConn(whoop)
+      onProviderChange?.()
+    } catch (err) {
+      setError(`Delete failed: ${err.response?.data?.error || err.message}`)
+    } finally {
+      setDeletingAll(false)
+      setConfirmDeleteAll(false)
     }
   }
 
@@ -306,10 +358,13 @@ export default function AccountPage({ onProviderChange }) {
             conn={stravaConn}
             confirming={confirming === 'strava'}
             disconnecting={disconnecting === 'strava'}
+            importing={importing === 'strava'}
+            importResult={importResult?.provider === 'strava' ? importResult : null}
             fmtDate={fmtDate}
             onConnect={connectStrava}
             onDisconnect={() => handleDisconnect('strava')}
             onCancelConfirm={() => setConfirming(null)}
+            onImport90={() => handleImport90('strava')}
           />
 
           <div style={s.divider} />
@@ -320,13 +375,49 @@ export default function AccountPage({ onProviderChange }) {
             conn={whoopConn}
             confirming={confirming === 'whoop'}
             disconnecting={disconnecting === 'whoop'}
+            importing={importing === 'whoop'}
+            importResult={importResult?.provider === 'whoop' ? importResult : null}
             fmtDate={fmtDate}
             onConnect={connectWhoop}
             onDisconnect={() => handleDisconnect('whoop')}
             onCancelConfirm={() => setConfirming(null)}
+            onImport90={() => handleImport90('whoop')}
           />
 
           {error && <p style={s.errorMsg}>{error}</p>}
+
+          {/* ── Delete all data from ZONE ── */}
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+            {confirmDeleteAll ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <p style={{ fontSize: 12, color: 'var(--bad)', fontWeight: 600, margin: 0 }}>
+                  This will permanently delete all your activities, metrics, training plans, and provider connections. This cannot be undone.
+                </p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={handleDeleteAllData}
+                    disabled={deletingAll}
+                    style={{ ...s.actionBtn, ...s.destructiveBtn, opacity: deletingAll ? 0.6 : 1 }}
+                  >
+                    {deletingAll ? 'Deleting…' : 'Yes, delete everything'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteAll(false)}
+                    style={s.cancelBtn}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={handleDeleteAllData}
+                style={{ ...s.actionBtn, color: 'var(--bad)', borderColor: 'var(--bad)33', background: 'var(--bad-dim)', fontSize: 12 }}
+              >
+                Delete all data from ZONE
+              </button>
+            )}
+          </div>
         </section>
 
       </div>
@@ -837,8 +928,9 @@ function CameraIcon() {
 
 // ── Provider row ──────────────────────────────────────────────────────────────
 
-function ProviderRow({ label, color, conn, confirming, disconnecting, fmtDate, onConnect, onDisconnect, onCancelConfirm }) {
+function ProviderRow({ label, color, conn, confirming, disconnecting, importing, importResult, fmtDate, onConnect, onDisconnect, onCancelConfirm, onImport90 }) {
   const connected = !!conn?.connected
+  const showImport90 = connected && !conn?.lastSyncedAt
 
   return (
     <div style={s.providerRow}>
@@ -875,25 +967,40 @@ function ProviderRow({ label, color, conn, confirming, disconnecting, fmtDate, o
             Connect
           </button>
         ) : confirming ? (
-          // Confirm state — show warning + confirm/cancel
           <div style={s.confirmRow}>
-            <span style={s.confirmWarn}>This will delete all synced {label} data.</span>
+            <span style={s.confirmWarn}>This will stop future {label} syncs. Your existing data is preserved.</span>
             <button
               onClick={onDisconnect}
               disabled={disconnecting}
               style={{ ...s.actionBtn, ...s.destructiveBtn }}
             >
-              {disconnecting ? 'Removing…' : 'Yes, remove'}
+              {disconnecting ? 'Disconnecting…' : 'Yes, disconnect'}
             </button>
             <button onClick={onCancelConfirm} style={s.cancelBtn}>Cancel</button>
           </div>
         ) : (
-          <button
-            onClick={onDisconnect}
-            style={{ ...s.actionBtn, color: 'var(--bad)', borderColor: 'var(--bad)33', background: 'var(--bad-dim)' }}
-          >
-            Disconnect
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {showImport90 && (
+              <button
+                onClick={onImport90}
+                disabled={importing}
+                style={{ ...s.actionBtn, color: color, borderColor: color + '44', background: color + '10', opacity: importing ? 0.6 : 1 }}
+              >
+                {importing ? 'Importing…' : 'Import last 90 days'}
+              </button>
+            )}
+            {importResult && (
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {importResult.count} records imported
+              </span>
+            )}
+            <button
+              onClick={onDisconnect}
+              style={{ ...s.actionBtn, color: 'var(--bad)', borderColor: 'var(--bad)33', background: 'var(--bad-dim)' }}
+            >
+              Disconnect
+            </button>
+          </div>
         )}
       </div>
     </div>
