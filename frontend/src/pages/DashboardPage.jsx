@@ -1,459 +1,506 @@
 /**
- * DashboardPage — Today (route: /)
+ * DashboardPage — Home tab (route: /)
  *
- * Nexus-style layout:
- * 1. KPI row          — Recovery · Sleep · Strain (3 compact cards)
- * 2. Main + aside     — 30d Trends (2/3) · Readiness Scatter (1/3)
- * 3. Full width       — Acute vs Chronic Load
- * 4. Full width       — Training + Recovery Heatmap
- * 5. Full width       — Recent Activities
+ * Mobile design:
+ * 1. Race countdown banner (if active goal with event date)
+ * 2. Recovery donut hero + quick stats strip
+ * 3. This week — training hours bar chart
+ * 4. Today's workout gradient card
+ * 5. Recent activities list
+ * 6. 7-day recovery trend bubbles
  */
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useCurrentWeekSchedule } from '../hooks/usePlanner'
-import { NumberTicker } from '../components/ui/number-ticker'
-import { AnimatedCircularProgressBar } from '../components/ui/animated-circular-progress-bar'
-import { useSupabaseMetrics }    from '../hooks/useSupabaseMetrics'
-import { useDateRange } from '../context/DateRangeContext'
-import { recoveryColor, strainColor, msToHHMM } from '../utils/format'
-import {
-  PageWrapper, Panel, PanelHeader,
-  EmptyNote, Loader,
-} from '../components/ui'
-import SmallMultiplesPanel    from '../components/SmallMultiplesPanel'
-import RecoveryDriversChart   from '../components/RecoveryDriversChart'
+import { useSupabaseMetrics }  from '../hooks/useSupabaseMetrics'
+import { useSupabaseActivities } from '../hooks/useSupabaseActivities'
+import { usePlannerGoal, useCurrentWeekSchedule } from '../hooks/usePlanner'
+import { msToHHMM, activityIcon } from '../utils/format'
+
+// ── Design helpers ─────────────────────────────────────────────────────────────
+
+function recoveryColor(score) {
+  if (score == null) return '#9CA3AF'
+  if (score >= 67)   return '#34D399'
+  if (score >= 34)   return '#FBBF24'
+  return '#FB7185'
+}
+
+const SESSION_COLORS = {
+  easy:          '#6366F1',
+  tempo:         '#FB923C',
+  interval:      '#FBBF24',
+  long:          '#059669',
+  rest:          '#E5E7EB',
+  cross_training:'#C084FC',
+  strength:      '#C084FC',
+  recovery:      '#94A3B8',
+  default:       '#6366F1',
+}
+
+function sessionColor(type) {
+  return SESSION_COLORS[type] || SESSION_COLORS.default
+}
+
+const GOAL_LABELS = {
+  base_fitness:        'Base Fitness',
+  race_5k:             '5K Race',
+  race_10k:            '10K Race',
+  race_half_marathon:  'Half Marathon',
+  race_marathon:       'Marathon',
+  triathlon:           'Triathlon',
+  weight_loss:         'Weight Loss',
+  general_performance: 'General Performance',
+}
+
+function goalIcon(type) {
+  if (!type) return '🎯'
+  if (type.includes('marathon') || type.includes('5k') || type.includes('10k')) return '🏃'
+  if (type === 'triathlon') return '🏊'
+  if (type === 'weight_loss') return '⚡'
+  return '🎯'
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null
+  const target = new Date(dateStr)
+  const today  = new Date()
+  today.setHours(0, 0, 0, 0)
+  target.setHours(0, 0, 0, 0)
+  return Math.ceil((target - today) / 86400000)
+}
+
+function formatDate(str) {
+  if (!str) return ''
+  const d = new Date(str)
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function formatDistanceKm(meters) {
+  if (!meters) return '—'
+  return `${(meters / 1000).toFixed(1)} km`
+}
+
+function formatDuration(seconds) {
+  if (!seconds) return '—'
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
+// ── SVG donut ring ─────────────────────────────────────────────────────────────
+
+function DonutRing({ value, color, size = 140, stroke = 12 }) {
+  const r   = (size / 2) - stroke
+  const circ = 2 * Math.PI * r
+  const offset = circ * (1 - Math.max(0, Math.min(100, value || 0)) / 100)
+  const cx = size / 2
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ overflow: 'visible' }}>
+      <circle cx={cx} cy={cx} r={r} fill="none" stroke="#EAECF0" strokeWidth={stroke} />
+      <circle
+        cx={cx} cy={cx} r={r} fill="none"
+        stroke={color} strokeWidth={stroke}
+        strokeDasharray={circ} strokeDashoffset={offset}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${cx} ${cx})`}
+        style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1)' }}
+      />
+    </svg>
+  )
+}
+
+// ── Mini bar chart for weekly hours ───────────────────────────────────────────
+
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+
+function WeekBarChart({ dayHours }) {
+  const maxH = Math.max(...dayHours.map(d => d.hours), 0.5)
+  const today = new Date().getDay() // 0=Sun, 1=Mon...
+  // convert to 0=Mon index
+  const todayIdx = today === 0 ? 6 : today - 1
+
+  return (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 60 }}>
+      {dayHours.map((d, i) => {
+        const barH = Math.max(4, (d.hours / maxH) * 48)
+        const isToday = i === todayIdx
+        return (
+          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <div style={{
+              width: '100%', height: barH,
+              background: isToday ? '#6366F1' : d.hours > 0 ? '#A5B4FC' : '#EAECF0',
+              borderRadius: 4,
+              transition: 'height 0.5s cubic-bezier(0.4,0,0.2,1)',
+            }} />
+            <span style={{ fontSize: 10, color: isToday ? '#6366F1' : '#9CA3AF', fontWeight: isToday ? 700 : 500 }}>
+              {DAY_LABELS[i]}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage({ authStatus }) {
-  const { filterByDate, label: periodLabel } = useDateRange()
+  const navigate = useNavigate()
 
-  // Reads from Supabase daily_metrics — not live WHOOP API
-  const { daily: whoopAll, loading } = useSupabaseMetrics(!!authStatus?.whoop, 90)
-
-  const whoopFiltered = useMemo(() => filterByDate(whoopAll), [whoopAll, filterByDate])
+  const { daily: whoopAll, loading: whoopLoading } = useSupabaseMetrics(!!authStatus?.whoop, 90)
+  const { activities, loading: actsLoading }        = useSupabaseActivities(!!authStatus?.strava, 20)
+  const { goal }                                    = usePlannerGoal()
+  const { lifecycle, week: schedWeek, days: schedDays, sessions: schedSessions } =
+    useCurrentWeekSchedule()
 
   const latest = whoopAll.length ? whoopAll[whoopAll.length - 1] : null
   const prev   = whoopAll.length > 1 ? whoopAll[whoopAll.length - 2] : null
 
-  const base28 = useMemo(() => {
-    if (!whoopAll.length) return {}
-    const w = whoopAll.slice(-28)
-    const avg = key => {
-      const vals = w.filter(d => d[key] != null).map(d => d[key])
-      return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null
-    }
-    return { hrv: avg('hrv_rmssd'), rhr: avg('resting_hr'), recovery: avg('recovery_score') }
+  // 7-day recovery trend
+  const trend7 = useMemo(() => {
+    const slice = whoopAll.slice(-7)
+    const days  = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+    // Pad left if we have fewer than 7 days
+    const padded = Array(Math.max(0, 7 - slice.length)).fill(null).concat(slice)
+    return padded.map((d, i) => ({ label: days[i], score: d?.recovery_score ?? null }))
   }, [whoopAll])
 
-  if (loading) return <Loader />
+  // Weekly training hours from schedule
+  const dayHours = useMemo(() => {
+    if (!schedDays.length) return Array(7).fill({ hours: 0 })
+    return schedDays.map(day => {
+      const daySessions = schedSessions.filter(s => s.day_id === day.id)
+      const mins = daySessions.reduce((sum, s) => sum + (s.duration_min || 0), 0)
+      return { hours: mins / 60, date: day.date }
+    })
+  }, [schedDays, schedSessions])
 
-  // ── Derived KPI values ─────────────────────────────────────────────────────
-  const rec   = latest?.recovery_score
-  const slp   = latest?.sleep_performance
-  const slpMs = latest?.sleep_duration_ms
-  const str   = prev?.strain
-  const hrv   = latest?.hrv_rmssd
-  const rhr   = latest?.resting_hr
+  // Total weekly hours
+  const totalWeekHours = useMemo(
+    () => dayHours.reduce((sum, d) => sum + d.hours, 0).toFixed(1),
+    [dayHours]
+  )
 
-  const recDelta = rec != null && base28.recovery != null
-    ? +(rec - base28.recovery).toFixed(1) : null
-  const hrvDelta = hrv != null && base28.hrv != null
-    ? +(hrv - base28.hrv).toFixed(1) : null
-  const rhrDelta = rhr != null && base28.rhr != null
-    ? +(rhr - base28.rhr).toFixed(1) : null
+  // Today's sessions
+  const todaySessions = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const todayDay = schedDays.find(d => d.date?.slice(0, 10) === todayStr)
+    if (!todayDay) return []
+    return schedSessions.filter(s => s.day_id === todayDay.id && s.session_type !== 'rest')
+  }, [schedDays, schedSessions])
 
+  const firstSession = todaySessions[0] || null
+
+  // Race countdown
+  const eventDate = goal?.event_date
+  const daysLeft  = daysUntil(eventDate)
+
+  // Loading state
+  const loading = whoopLoading || actsLoading
+
+  const rec  = latest?.recovery_score
+  const hrv  = latest?.hrv_rmssd
+  const slp  = latest?.sleep_performance
+  const str  = prev?.strain
+
+  const recColor = recoveryColor(rec)
   const readinessLabel =
-    rec == null ? null
-    : rec >= 67 ? 'Ready to perform'
-    : rec >= 34 ? 'Moderate readiness'
+    rec == null  ? 'No recovery data'
+    : rec >= 67  ? 'Ready to perform'
+    : rec >= 34  ? 'Moderate readiness'
     : 'Prioritise recovery'
 
   return (
-    <PageWrapper>
+    <div style={{ padding: '16px 16px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      {/* ── Zone 1: KPI row ── */}
-      {authStatus?.whoop && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <KPICard
-            eyebrow="Recovery"
-            label="Today"
-            value={rec != null ? Math.round(rec) : '—'}
-            unit="%"
-            color={recoveryColor(rec)}
-            badge={readinessLabel}
-            delta={recDelta}
-            deltaUnit="pts vs 28d"
-            gauge
-          />
-          <KPICard
-            eyebrow="Sleep"
-            label="Last Night"
-            value={slp != null ? Math.round(slp) : '—'}
-            unit="%"
-            color="#818cf8"
-            sub={slpMs ? msToHHMM(slpMs) + ' slept' : null}
-          />
-          <KPICard
-            eyebrow="Strain"
-            label="Yesterday"
-            value={str != null ? str.toFixed(1) : '—'}
-            color={strainColor(str)}
-            sub={
-              str == null ? null
-              : str >= 18 ? 'All Out'
-              : str >= 14 ? 'Strenuous'
-              : str >= 10 ? 'Moderate'
-              : 'Light'
-            }
-          />
+      {/* ── Race countdown ── */}
+      {goal && eventDate && daysLeft != null && daysLeft >= 0 && (
+        <div style={{
+          background: 'linear-gradient(135deg,#1A1B23,#2D2E3D)',
+          borderRadius: 20, padding: '16px 20px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 22 }}>{goalIcon(goal.goal_type)}</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
+                {GOAL_LABELS[goal.goal_type] || goal.goal_type}
+              </div>
+              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                {formatDate(eventDate)}
+              </div>
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#6366F1', letterSpacing: '-0.04em', lineHeight: 1 }}>
+              {daysLeft}
+            </div>
+            <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600 }}>
+              {daysLeft === 1 ? 'day left' : 'days left'}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* ── Zone 2: Trends ── */}
-      {authStatus?.whoop && (
-        <Panel pad="flush">
-          <div style={{ padding: '20px 24px 14px' }}>
-            <PanelHeader label={periodLabel} title="Trends" bottom={0} />
+      {/* ── Recovery hero ── */}
+      <div style={card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div>
+            <div style={eyebrow}>Recovery</div>
+            <div style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>{readinessLabel}</div>
           </div>
-          {whoopFiltered.length > 1
-            ? <SmallMultiplesPanel data={whoopFiltered} />
-            : <div style={{ padding: '0 24px 20px' }}>
-                <EmptyNote>No WHOOP data for this period. Try a wider range.</EmptyNote>
-              </div>}
-        </Panel>
-      )}
+          <div style={{ fontSize: 11, color: '#9CA3AF' }}>Today</div>
+        </div>
 
-      {/* ── Zone 3: Recovery Drivers ── */}
-      {authStatus?.whoop && latest && (
-        <Panel>
-          <RecoveryDriversChart
-            today={latest}
-            prevDay={prev}
-            baseline={{ hrv_rmssd: base28.hrv, resting_hr: base28.rhr }}
-          />
-        </Panel>
-      )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          {/* Donut */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <DonutRing value={rec ?? 0} color={recColor} size={120} stroke={11} />
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span style={{ fontSize: 28, fontWeight: 800, color: recColor, letterSpacing: '-0.04em', lineHeight: 1 }}>
+                {rec != null ? Math.round(rec) : '—'}
+              </span>
+              {rec != null && <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>%</span>}
+            </div>
+          </div>
 
-      {/* ── Zone 4: Weekly Schedule ── */}
-      <Panel>
-        <PanelHeader title="This Week" note="Training Schedule" />
-        <WeekScheduleWidget />
-      </Panel>
-
-    </PageWrapper>
-  )
-}
-
-// ── KPI Card — Nexus-style metric tile ────────────────────────────────────────
-
-function KPICard({ eyebrow, label, value, unit, color = 'var(--text)', badge, delta, deltaUnit, sub, gauge }) {
-  const deltaPos = delta != null && delta > 0
-  const deltaNeg = delta != null && delta < 0
-  const isNumeric = typeof value === 'number'
-
-  return (
-    <div
-      className="panel-surface"
-      style={{
-        padding: '22px 24px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 14,
-        boxShadow: 'var(--shadow-sm), var(--inset-hi)',
-      }}
-    >
-      {/* ── Top: eyebrow + label ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <span style={{
-          fontSize: 10, fontWeight: 700,
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          color: 'var(--text-dim)',
-          lineHeight: 1,
-        }}>
-          {eyebrow}
-        </span>
-        <span style={{
-          fontSize: 13, fontWeight: 600,
-          color: 'var(--text-muted)',
-          letterSpacing: '-0.02em',
-          lineHeight: 1,
-        }}>
-          {label}
-        </span>
+          {/* Quick stats */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+            <StatPill label="HRV" value={hrv != null ? `${Math.round(hrv)} ms` : '—'} color="#6366F1" />
+            <StatPill label="Sleep" value={slp != null ? `${Math.round(slp)}%` : '—'} color="#22D3EE" />
+            <StatPill label="Strain" value={str != null ? str.toFixed(1) : '—'} color="#FB923C" />
+          </div>
+        </div>
       </div>
 
-      {/* ── Middle: gauge or big value ── */}
-      {gauge && isNumeric ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <AnimatedCircularProgressBar
-            value={value}
-            max={100}
-            gaugePrimaryColor={color}
-            gaugeSecondaryColor={`${color}22`}
-            className="size-20 text-base font-bold"
-            style={{ color }}
-          />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {unit && (
-              <span style={{ fontSize: 13, fontWeight: 600, color, opacity: 0.7 }}>{unit}</span>
+      {/* ── This week ── */}
+      <div style={card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div>
+            <div style={eyebrow}>This Week</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#1A1B23', letterSpacing: '-0.04em', lineHeight: 1.1 }}>
+              {totalWeekHours}
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#9CA3AF', marginLeft: 4 }}>hrs</span>
+            </div>
+          </div>
+          {lifecycle === 'no_plan' && (
+            <button
+              onClick={() => navigate('/training')}
+              style={pillLink}
+            >
+              Get a plan →
+            </button>
+          )}
+        </div>
+        <WeekBarChart dayHours={
+          dayHours.length === 7 ? dayHours :
+          Array.from({ length: 7 }, (_, i) => dayHours[i] || { hours: 0 })
+        } />
+      </div>
+
+      {/* ── Today's workout ── */}
+      {firstSession ? (
+        <div
+          onClick={() => navigate('/training')}
+          style={{
+            background: 'linear-gradient(135deg,#6366F1,#818CF8)',
+            borderRadius: 20, padding: '18px 20px', cursor: 'pointer',
+          }}
+        >
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>
+            Today's Workout
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.03em', marginBottom: 10 }}>
+            {firstSession.name || `${firstSession.sport || ''} ${firstSession.session_type || ''}`}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {firstSession.duration_min && (
+              <span style={workoutPill}>{firstSession.duration_min} min</span>
+            )}
+            {firstSession.session_type && (
+              <span style={workoutPill}>{firstSession.session_type}</span>
+            )}
+            {firstSession.sport && (
+              <span style={workoutPill}>{firstSession.sport}</span>
             )}
           </div>
         </div>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, lineHeight: 1 }}>
-          <span
-            className="metric-mono"
-            style={{
-              fontSize: 46, fontWeight: 800,
-              color,
-              lineHeight: 1,
-              letterSpacing: '-2.5px',
-            }}
-          >
-            {isNumeric
-              ? <NumberTicker value={value} className="tabular-nums" style={{ color, fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', letterSpacing: 'inherit' }} />
-              : value
-            }
-          </span>
-          {unit && !gauge && (
-            <span style={{
-              fontSize: 20, fontWeight: 600,
-              color, opacity: 0.65,
-              paddingBottom: 5,
-            }}>
-              {unit}
-            </span>
+      ) : lifecycle === 'active' ? (
+        <div style={{ ...card, background: '#F9FAFB' }}>
+          <div style={eyebrow}>Today's Workout</div>
+          <div style={{ fontSize: 14, color: '#9CA3AF', marginTop: 4 }}>Rest day — recovery is training too.</div>
+        </div>
+      ) : lifecycle === 'no_plan' ? (
+        <div
+          onClick={() => navigate('/training')}
+          style={{ ...card, background: 'linear-gradient(135deg,#6366F1,#818CF8)', cursor: 'pointer' }}
+        >
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>
+            Training Plan
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
+            Create your personalised plan →
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Recent activities ── */}
+      {authStatus?.strava && (
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div style={eyebrow}>Recent Activities</div>
+            <button onClick={() => navigate('/activities')} style={pillLink}>See all →</button>
+          </div>
+          {loading ? (
+            <div style={{ color: '#9CA3AF', fontSize: 13 }}>Loading…</div>
+          ) : activities.length === 0 ? (
+            <div style={{ color: '#9CA3AF', fontSize: 13 }}>No activities yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {activities.slice(0, 5).map(a => (
+                <ActivityRow key={a.id} activity={a} />
+              ))}
+            </div>
           )}
         </div>
       )}
 
-      {/* ── Bottom: badge / delta / sub ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        {delta != null && (
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 3,
-            padding: '3px 9px',
-            borderRadius: 999,
-            fontSize: 11.5,
-            fontWeight: 650,
-            background: deltaPos
-              ? 'var(--good-dim)'
-              : deltaNeg ? 'var(--bad-dim)' : 'var(--surface-2)',
-            color: deltaPos
-              ? 'var(--good)'
-              : deltaNeg ? 'var(--bad)' : 'var(--text-muted)',
-          }}>
-            {deltaPos ? '↑' : deltaNeg ? '↓' : '→'}&nbsp;
-            {delta > 0 ? '+' : ''}{delta}
-            {deltaUnit ? ` ${deltaUnit}` : ''}
-          </span>
-        )}
-        {badge && !delta && (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '3px 10px',
-            borderRadius: 999,
-            background: `${color}12`,
-            border: `1px solid ${color}28`,
-            fontSize: 11.5, fontWeight: 600,
-            color,
-          }}>
-            <span style={{
-              width: 5, height: 5, borderRadius: '50%',
-              background: color,
-              boxShadow: `0 0 5px ${color}`,
-              flexShrink: 0,
-            }} className="glow-pulse" />
-            {badge}
-          </span>
-        )}
-        {sub && (
-          <span style={{
-            fontSize: 12, color: 'var(--text-muted)',
-            fontWeight: 500, letterSpacing: '-0.01em',
-          }}>
-            {sub}
-          </span>
-        )}
-      </div>
+      {/* ── 7-day recovery trend ── */}
+      {authStatus?.whoop && (
+        <div style={card}>
+          <div style={{ ...eyebrow, marginBottom: 14 }}>7-Day Recovery Trend</div>
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'space-between' }}>
+            {trend7.map((d, i) => {
+              const c = recoveryColor(d.score)
+              return (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: '50%',
+                    background: d.score != null ? `${c}22` : '#F3F4F6',
+                    border: `2px solid ${d.score != null ? c : '#E5E7EB'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: d.score != null ? c : '#D1D5DB' }}>
+                      {d.score != null ? Math.round(d.score) : '—'}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600 }}>{d.label}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* No connections — nudge */}
+      {!authStatus?.strava && !authStatus?.whoop && (
+        <div style={{ ...card, textAlign: 'center', padding: '32px 20px' }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>📡</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#1A1B23', marginBottom: 6 }}>
+            Connect your providers
+          </div>
+          <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.5, marginBottom: 16 }}>
+            Connect Strava and WHOOP to see your recovery scores, training load, and personalised insights.
+          </div>
+          <button
+            onClick={() => navigate('/account')}
+            style={{
+              background: '#6366F1', color: '#fff',
+              border: 'none', borderRadius: 12,
+              padding: '12px 24px', fontSize: 14, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            Go to Profile
+          </button>
+        </div>
+      )}
+
+      <div style={{ height: 8 }} />
     </div>
   )
 }
 
-// ── Weekly schedule widget ────────────────────────────────────────────────────
+// ── Sub-components ─────────────────────────────────────────────────────────────
 
-function WeekScheduleWidget() {
-  const navigate = useNavigate()
-  const { lifecycle, days, sessions, loading } = useCurrentWeekSchedule()
-  const today = new Date().toISOString().slice(0, 10)
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 0' }}>
-        <Loader />
-      </div>
-    )
-  }
-
-  const hasDays = days.length > 0
-
-  if (lifecycle === 'pre_start') {
-    return (
-      <div style={{ textAlign: 'center', padding: '28px 20px' }}>
-        <div style={{ fontSize: 28, marginBottom: 10, opacity: 0.35 }}>⏳</div>
-        <div style={{ fontSize: 14, fontWeight: 650, color: 'var(--text)', marginBottom: 6, letterSpacing: '-0.02em' }}>
-          Plan hasn't started yet
-        </div>
-        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55, fontWeight: 450, maxWidth: 280, margin: '0 auto' }}>
-          Your training plan starts soon. Check the Planner for details.
-        </p>
-      </div>
-    )
-  }
-
-  if (!lifecycle || lifecycle === 'no_plan' || (!hasDays && lifecycle !== 'active')) {
-    return (
-      <div style={{ textAlign: 'center', padding: '28px 20px' }}>
-        <div style={{ fontSize: 32, marginBottom: 10, opacity: 0.35 }}>📅</div>
-        <div style={{ fontSize: 14, fontWeight: 650, color: 'var(--text)', marginBottom: 6, letterSpacing: '-0.02em' }}>
-          No training plan yet
-        </div>
-        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 18, lineHeight: 1.55, fontWeight: 450, maxWidth: 280, margin: '0 auto 18px' }}>
-          Build a personalised weekly schedule tailored to your fitness level and goals.
-        </p>
-        <button
-          onClick={() => navigate('/planner')}
-          style={{
-            padding: '9px 22px',
-            borderRadius: 10,
-            background: 'var(--accent)',
-            color: '#fff',
-            fontWeight: 650,
-            fontSize: 13,
-            border: 'none',
-            cursor: 'pointer',
-            letterSpacing: '-0.01em',
-            fontFamily: 'inherit',
-          }}
-        >
-          Create a Plan →
-        </button>
-      </div>
-    )
-  }
-
-  if (hasDays) {
-    return (
-      <div className="schedule-scroll">
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gap: 6,
-          minWidth: 420,
-        }}>
-          {days.map(day => {
-            const session = sessions.find(s => s.day_id === day.id)
-            const isToday = day.day_date === today
-            const isPast  = day.day_date < today
-            return (
-              <MiniDayCard
-                key={day.id}
-                day={day}
-                session={session}
-                isToday={isToday}
-                isPast={isPast}
-              />
-            )
-          })}
-        </div>
-      </div>
-    )
-  }
-
-  // Active plan but schedule not generated yet
+function StatPill({ label, value, color }) {
   return (
-    <div style={{ textAlign: 'center', padding: '22px 20px' }}>
-      <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 14, fontWeight: 450 }}>
-        Your plan is ready — generate this week's schedule in the Planner.
-      </p>
-      <button
-        onClick={() => navigate('/planner')}
-        style={{
-          padding: '8px 20px',
-          borderRadius: 10,
-          background: 'var(--accent)',
-          color: '#fff',
-          fontWeight: 650,
-          fontSize: 13,
-          border: 'none',
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-        }}
-      >
-        Go to Planner →
-      </button>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: 15, fontWeight: 700, color: color || '#1A1B23', letterSpacing: '-0.02em' }}>
+        {value}
+      </span>
     </div>
   )
 }
 
-function MiniDayCard({ day, session, isToday, isPast }) {
-  const d        = new Date(day.day_date + 'T12:00:00')
-  const dayLabel = d.toLocaleDateString('en', { weekday: 'short' })
-  const dateNum  = d.getDate()
-
-  const dotColor = session?.is_key_session
-    ? '#ef4444'
-    : session
-      ? 'var(--accent)'
-      : 'var(--border-hi)'
-
-  const sessionLabel = session
-    ? (session.session_name || session.session_type || 'Train').slice(0, 9)
-    : 'Rest'
+function ActivityRow({ activity }) {
+  const icon = activityIcon(activity.type) || '🏃'
+  const date = activity.start_date
+    ? new Date(activity.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    : ''
 
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-      padding: '10px 4px',
-      borderRadius: 10,
-      background: isToday ? 'var(--accent-dim)' : 'var(--surface-2)',
-      border: `1px solid ${isToday
-        ? 'color-mix(in srgb, var(--accent) 30%, transparent)'
-        : 'var(--border)'}`,
-      opacity: isPast ? 0.5 : 1,
-      transition: 'opacity 0.15s',
-      minWidth: 0,
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '10px 0',
+      borderBottom: '1px solid #F3F4F6',
     }}>
-      <span style={{
-        fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
-        letterSpacing: '0.05em', lineHeight: 1,
-        color: isToday ? 'var(--accent)' : 'var(--text-dim)',
-      }}>
-        {dayLabel}
-      </span>
-      <span style={{
-        fontSize: 15, fontWeight: 800, lineHeight: 1.1,
-        color: isToday ? 'var(--accent)' : 'var(--text)',
-      }}>
-        {dateNum}
-      </span>
       <div style={{
-        width: 5, height: 5, borderRadius: '50%',
-        background: dotColor,
-        margin: '1px 0',
-        boxShadow: session?.is_key_session ? `0 0 5px ${dotColor}` : 'none',
-      }} />
-      <span style={{
-        fontSize: 8, color: 'var(--text-muted)', fontWeight: 500,
-        textAlign: 'center', lineHeight: 1.2,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        maxWidth: '100%', paddingInline: 2,
+        width: 38, height: 38, borderRadius: 12,
+        background: '#F5F6FA',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 18, flexShrink: 0,
       }}>
-        {sessionLabel}
-      </span>
+        {icon}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1B23', letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {activity.name || activity.type}
+        </div>
+        <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{date}</div>
+      </div>
+      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1B23' }}>
+          {activity.distance ? formatDistanceKm(activity.distance) : '—'}
+        </div>
+        <div style={{ fontSize: 11, color: '#9CA3AF' }}>
+          {activity.moving_time ? formatDuration(activity.moving_time) : ''}
+        </div>
+      </div>
     </div>
   )
 }
 
+// ── Styles ─────────────────────────────────────────────────────────────────────
+
+const card = {
+  background: '#fff',
+  borderRadius: 20,
+  border: '1px solid #EAECF0',
+  padding: '18px 18px',
+  boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+}
+
+const eyebrow = {
+  fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
+  textTransform: 'uppercase', color: '#9CA3AF', marginBottom: 4,
+}
+
+const pillLink = {
+  fontSize: 12, fontWeight: 700, color: '#6366F1',
+  background: 'none', border: 'none', cursor: 'pointer',
+  fontFamily: 'inherit', padding: 0,
+}
+
+const workoutPill = {
+  background: 'rgba(255,255,255,0.2)',
+  borderRadius: 20, padding: '4px 10px',
+  fontSize: 11, fontWeight: 700, color: '#fff',
+  backdropFilter: 'blur(4px)',
+}

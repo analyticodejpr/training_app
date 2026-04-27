@@ -17,23 +17,23 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 :root {
   /* ── Canvas ── */
-  --bg:         #eaeff8;   /* cool blue-tinted canvas — more atmosphere than #f5f7fa */
+  --bg:         #F5F6FA;
   --surface:    #ffffff;
-  --surface-2:  #f2f6fc;   /* slightly more saturated */
-  --surface-3:  #e6edf8;   /* controls, inputs */
+  --surface-2:  #F5F6FA;
+  --surface-3:  #EAECF0;
 
   /* ── Borders — feather-light ── */
-  --border:     #d8e2f0;
-  --border-hi:  #b8cce0;
+  --border:     #EAECF0;
+  --border-hi:  #D1D5DB;
 
   /* ── Text ── */
-  --text:       #0c1828;   /* deeper cool-black */
-  --text-muted: #5a7290;   /* more blue-tinted than slate-500 */
-  --text-dim:   #8ca4be;
+  --text:       #1A1B23;
+  --text-muted: #6B7280;
+  --text-dim:   #9CA3AF;
 
-  /* ── Training orange ── */
-  --accent:     #e05200;
-  --accent-dim: rgba(224, 82, 0, 0.09);
+  /* ── Indigo primary ── */
+  --accent:     #6366F1;
+  --accent-dim: rgba(99, 102, 241, 0.10);
 
   /* ── WHOOP teal ── */
   --whoop:      #0d9488;
@@ -178,7 +178,7 @@ html, body, #root {
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
