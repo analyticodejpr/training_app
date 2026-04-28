@@ -541,10 +541,10 @@ function WorkoutSheet({ day, sessions, completed, completing, onComplete, onClos
           {/* Stat pills */}
           {!isRest && firstSession && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 18 }}>
-              <SheetStatPill label="Duration" value={firstSession.duration_min ? `${firstSession.duration_min}m` : '—'} />
+              <SheetStatPill label="Duration" value={firstSession.prescribed_minutes ? `${firstSession.prescribed_minutes}m` : '—'} />
               <SheetStatPill label="Type" value={type.charAt(0).toUpperCase() + type.slice(1)} />
-              <SheetStatPill label="TSS" value={firstSession.tss_estimate ? Math.round(firstSession.tss_estimate) : '—'} />
-              <SheetStatPill label="Cost" value={firstSession.recovery_cost ? `${firstSession.recovery_cost}/10` : '—'} />
+              <SheetStatPill label="Zone" value={firstSession.intensity_zone || '—'} />
+              <SheetStatPill label="Cost" value={firstSession.recovery_cost ? firstSession.recovery_cost.charAt(0).toUpperCase() + firstSession.recovery_cost.slice(1) : '—'} />
             </div>
           )}
 
@@ -552,29 +552,41 @@ function WorkoutSheet({ day, sessions, completed, completing, onComplete, onClos
           {sessions.length > 1 && (
             <div style={{ marginBottom: 18 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#9CA3AF', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 10 }}>All Sessions</div>
-              {sessions.map((s, i) => (
+              {sessions.map((s) => (
                 <div key={s.id} style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '8px 12px', background: '#F9FAFB', borderRadius: 10, marginBottom: 6,
                 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: sessionColor(s.session_type), flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1B23' }}>{s.name || s.session_type}</div>
-                    {s.duration_min && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>{s.duration_min} min</div>}
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1B23' }}>{s.session_type}</div>
+                    {s.prescribed_minutes && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>{s.prescribed_minutes} min</div>}
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Notes */}
-          {firstSession?.notes && !isRest && (
+          {/* Instructions */}
+          {firstSession?.instructions && !isRest && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#9CA3AF', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 8 }}>
+                Instructions
+              </div>
+              <p style={{ fontSize: 14, color: '#1A1B23', lineHeight: 1.65, margin: 0 }}>
+                {firstSession.instructions}
+              </p>
+            </div>
+          )}
+
+          {/* Rationale */}
+          {firstSession?.rationale && !isRest && (
             <div style={{ marginBottom: 18 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#9CA3AF', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 8 }}>
-                About this workout
+                Why this session
               </div>
-              <p style={{ fontSize: 14, color: '#4B5563', lineHeight: 1.6, margin: 0 }}>
-                {firstSession.notes}
+              <p style={{ fontSize: 14, color: '#4B5563', lineHeight: 1.65, margin: 0 }}>
+                {firstSession.rationale}
               </p>
             </div>
           )}
