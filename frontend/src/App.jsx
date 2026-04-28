@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { getAuthStatus, saveToken, importStravaRecent, importWhoopRecent } from './utils/api'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -8,6 +8,7 @@ import MobileHeader   from './components/MobileHeader'
 import BottomNav      from './components/BottomNav'
 import DesktopSidebar from './components/DesktopSidebar'
 import DesktopDashboard from './components/DesktopDashboard'
+import ChatPanel      from './components/ChatPanel'
 import NameSetupModal from './components/NameSetupModal'
 import SignInPage     from './pages/SignInPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
@@ -118,8 +119,9 @@ function AppShell() {
 }
 
 function AuthedApp({ authStatus, oauthError, onClearError, onProviderChange, showNameSetup, onNameDone, user }) {
-  const location  = useLocation()
-  const isDesktop = useDesktop()
+  const location   = useLocation()
+  const isDesktop  = useDesktop()
+  const [chatOpen, setChatOpen] = useState(false)
 
   const shellPaths = ['/', '/activities', '/training', '/social', '/account']
   const showShell  = shellPaths.includes(location.pathname)
@@ -187,7 +189,7 @@ function AuthedApp({ authStatus, oauthError, onClearError, onProviderChange, sho
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#F5F6FA' }}>
-      {showShell && <MobileHeader onSync={triggerSync} />}
+      {showShell && <MobileHeader onSync={triggerSync} onChatOpen={() => setChatOpen(true)} />}
       {errorBanner}
       <main style={{
         flex: 1, minWidth: 0,
@@ -196,6 +198,7 @@ function AuthedApp({ authStatus, oauthError, onClearError, onProviderChange, sho
         {routes}
       </main>
       {showShell && <BottomNav />}
+      <ChatPanel mobile open={chatOpen} onClose={() => setChatOpen(false)} />
       {showNameSetup && <NameSetupModal user={user} onDone={onNameDone} />}
     </div>
   )
