@@ -1,6 +1,6 @@
 const express = require('express');
 const whoop   = require('../services/whoopService');
-const { importLast90Days } = require('../services/whoopSync');
+const { importLast90Days, importDateWindow } = require('../services/whoopSync');
 const { requireSupabaseUser } = require('../middleware/requireSupabaseUser');
 const { supabase } = require('../db/supabase');
 
@@ -72,7 +72,6 @@ router.get('/connection', requireSupabaseUser, async (req, res) => {
  */
 router.post('/import-recent', requireSupabaseUser, async (req, res) => {
   try {
-    const { importDateWindow } = require('../services/whoopSync');
     const end   = new Date().toISOString();
     const start = new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString();
     const result = await importDateWindow(req.supabaseUser.id, start, end);
