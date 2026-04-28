@@ -171,8 +171,8 @@ export default function DashboardPage({ authStatus }) {
     if (!schedDays.length) return Array(7).fill({ hours: 0 })
     return schedDays.map(day => {
       const daySessions = schedSessions.filter(s => s.day_id === day.id)
-      const mins = daySessions.reduce((sum, s) => sum + (s.duration_min || 0), 0)
-      return { hours: mins / 60, date: day.date }
+      const mins = daySessions.reduce((sum, s) => sum + (s.prescribed_minutes || 0), 0)
+      return { hours: mins / 60, date: day.day_date }
     })
   }, [schedDays, schedSessions])
 
@@ -182,12 +182,42 @@ export default function DashboardPage({ authStatus }) {
     [dayHours]
   )
 
-  // Today's sessions
-  const todaySessions = useMemo(() => {
+  // Today's sessions — and next upcoming session if today is a rest day
+  const { todaySessions, nextSession } = useMemo(() => {
     const todayStr = new Date().toISOString().slice(0, 10)
-    const todayDay = schedDays.find(d => d.date?.slice(0, 10) === todayStr)
-    if (!todayDay) return []
-    return schedSessions.filter(s => s.day_id === todayDay.id && s.session_type !== 'rest')
+    const sortedDays = [...schedDays].sort((a, b) =>
+      (a.day_date || '').localeCompare(b.day_date || '')
+    )
+    const todayDay = sortedDays.find(d => d.day_date?.slice(0, 10) === todayStr)
+    const todaySess = todayDay
+      ? schedSessions.filter(s => s.day_id === todayDay.id && s.session_type !== 'rest')
+      : []
+
+    // Find the next day after today that has sessions
+    let nextSess = null
+    let nextDayLabel = null
+    if (!todaySess.length) {
+      for (const day of sortedDays) {
+        if ((day.day_date || '') <= todayStr) continue
+        const sess = schedSessions.filter(s => s.day_id === day.id && s.session_type !== 'rest')
+        if (sess.length) {
+          nextSess = sess[0]
+          const diffDays = Math.round(
+            (new Date(day.day_date + 'T00:00:00Z') - new Date(todayStr + 'T00:00:00Z'))
+            / 86400000
+          )
+          nextDayLabel = diffDays === 1
+            ? 'Tomorrow'
+            : day.day_of_week.charAt(0).toUpperCase() + day.day_of_week.slice(1)
+          break
+        }
+      }
+    }
+
+    return {
+      todaySessions: todaySess,
+      nextSession:   nextSess ? { ...nextSess, dayLabel: nextDayLabel } : null,
+    }
   }, [schedDays, schedSessions])
 
   const firstSession = todaySessions[0] || null
@@ -316,17 +346,43 @@ export default function DashboardPage({ authStatus }) {
             Today's Workout
           </div>
           <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.03em', marginBottom: 10 }}>
-            {firstSession.name || `${firstSession.sport || ''} ${firstSession.session_type || ''}`}
+            {firstSession.sport || ''} {firstSession.session_type || ''}
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {firstSession.duration_min && (
-              <span style={workoutPill}>{firstSession.duration_min} min</span>
+            {firstSession.prescribed_minutes && (
+              <span style={workoutPill}>{firstSession.prescribed_minutes} min</span>
             )}
             {firstSession.session_type && (
               <span style={workoutPill}>{firstSession.session_type}</span>
             )}
             {firstSession.sport && (
               <span style={workoutPill}>{firstSession.sport}</span>
+            )}
+          </div>
+        </div>
+      ) : nextSession ? (
+        <div
+          onClick={() => navigate('/training')}
+          style={{
+            background: 'linear-gradient(135deg,#1A1B23,#2D2E3D)',
+            borderRadius: 20, padding: '18px 20px', cursor: 'pointer',
+          }}
+        >
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>
+            Rest Day · Next: {nextSession.dayLabel}
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.03em', marginBottom: 10 }}>
+            {nextSession.sport || ''} {nextSession.session_type || ''}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {nextSession.prescribed_minutes && (
+              <span style={{ ...workoutPill, background: 'rgba(255,255,255,0.1)' }}>{nextSession.prescribed_minutes} min</span>
+            )}
+            {nextSession.session_type && (
+              <span style={{ ...workoutPill, background: 'rgba(255,255,255,0.1)' }}>{nextSession.session_type}</span>
+            )}
+            {nextSession.sport && (
+              <span style={{ ...workoutPill, background: 'rgba(255,255,255,0.1)' }}>{nextSession.sport}</span>
             )}
           </div>
         </div>
