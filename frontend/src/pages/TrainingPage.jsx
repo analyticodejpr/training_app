@@ -274,33 +274,65 @@ export default function TrainingPage({ authStatus }) {
                     }}>
                       {blockWeeks.map(w => (
                         <div key={w.id} style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '8px 10px', marginTop: 6,
-                          background: '#fff', borderRadius: 10,
+                          padding: '12px', marginTop: 8,
+                          background: '#fff', borderRadius: 12,
                           border: '1px solid #F3F4F6',
                         }}>
-                          <div style={{
-                            width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                            background: `${blockColor}18`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 11, fontWeight: 800, color: blockColor,
-                          }}>
-                            {w.week_number}
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1B23' }}>
-                              Week {w.week_number}
-                              {w.week_type === 'recovery' && (
-                                <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#10B981', background: '#D1FAE5', padding: '1px 6px', borderRadius: 6 }}>Recovery</span>
-                              )}
+                          {/* Week header row */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                            <div style={{
+                              width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                              background: `${blockColor}18`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 11, fontWeight: 800, color: blockColor,
+                            }}>
+                              {w.week_number}
                             </div>
-                            <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
-                              {formatDate(w.start_date)} – {formatDate(w.end_date)}
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: '#1A1B23' }}>Week {w.week_number}</span>
+                                {w.is_recovery_week && (
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#10B981', background: '#D1FAE5', padding: '1px 6px', borderRadius: 6 }}>Recovery</span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
+                                {formatDate(w.week_start_date)} – {formatDate(w.week_end_date)}
+                              </div>
                             </div>
+                            {w.target_volume_hours > 0 && (
+                              <div style={{ fontSize: 13, fontWeight: 800, color: blockColor }}>{w.target_volume_hours}h</div>
+                            )}
                           </div>
-                          {w.target_hours > 0 && (
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#6B7280' }}>
-                              {w.target_hours}h
+
+                          {/* Theme */}
+                          {w.theme && (
+                            <div style={{ fontSize: 11, fontWeight: 700, color: blockColor, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>{w.theme}</div>
+                          )}
+                          {/* Objective */}
+                          {w.objective && (
+                            <div style={{ fontSize: 12, color: '#4B5563', lineHeight: 1.5, marginBottom: 10 }}>{w.objective}</div>
+                          )}
+
+                          {/* Stats grid */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
+                            <WeekStatCell label="Sessions" value={w.target_sessions ?? '—'} />
+                            <WeekStatCell label="Hard" value={w.target_hard_sessions ?? '—'} />
+                            <WeekStatCell label="Long" value={w.target_long_session_hours ? `${w.target_long_session_hours}h` : '—'} />
+                          </div>
+
+                          {/* Intensity distribution bar */}
+                          {(w.target_pct_easy != null || w.target_pct_moderate != null || w.target_pct_hard != null) && (
+                            <div>
+                              <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', height: 6, marginBottom: 4 }}>
+                                {w.target_pct_easy     > 0 && <div style={{ flex: w.target_pct_easy,     background: '#34D399' }} />}
+                                {w.target_pct_moderate > 0 && <div style={{ flex: w.target_pct_moderate, background: '#FBBF24' }} />}
+                                {w.target_pct_hard     > 0 && <div style={{ flex: w.target_pct_hard,     background: '#FB7185' }} />}
+                              </div>
+                              <div style={{ display: 'flex', gap: 10 }}>
+                                <IntensityLabel label="Easy"     pct={w.target_pct_easy}     color="#34D399" />
+                                <IntensityLabel label="Moderate" pct={w.target_pct_moderate} color="#FBBF24" />
+                                <IntensityLabel label="Hard"     pct={w.target_pct_hard}     color="#FB7185" />
+                              </div>
                             </div>
                           )}
                         </div>
@@ -762,6 +794,25 @@ function SheetStatPill({ label, value }) {
     }}>
       <div style={{ fontSize: 14, fontWeight: 800, color: '#1A1B23', letterSpacing: '-0.02em' }}>{value}</div>
       <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600, marginTop: 2 }}>{label}</div>
+    </div>
+  )
+}
+
+function WeekStatCell({ label, value }) {
+  return (
+    <div style={{ background: '#F9FAFB', borderRadius: 8, padding: '6px 8px', textAlign: 'center' }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: '#1A1B23', letterSpacing: '-0.02em' }}>{value}</div>
+      <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600, marginTop: 1 }}>{label}</div>
+    </div>
+  )
+}
+
+function IntensityLabel({ label, pct, color }) {
+  if (pct == null) return null
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+      <div style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
+      <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 600 }}>{label} {Math.round(pct)}%</span>
     </div>
   )
 }
