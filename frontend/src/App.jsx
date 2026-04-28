@@ -3,8 +3,11 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { getAuthStatus, saveToken, importStravaRecent, importWhoopRecent } from './utils/api'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { DateRangeProvider } from './context/DateRangeContext'
+import { useDesktop }        from './hooks/useDesktop'
 import MobileHeader   from './components/MobileHeader'
 import BottomNav      from './components/BottomNav'
+import DesktopSidebar from './components/DesktopSidebar'
+import DesktopDashboard from './components/DesktopDashboard'
 import NameSetupModal from './components/NameSetupModal'
 import SignInPage     from './pages/SignInPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
@@ -115,14 +118,13 @@ function AppShell() {
 }
 
 function AuthedApp({ authStatus, oauthError, onClearError, onProviderChange, showNameSetup, onNameDone, user }) {
-  const location = useLocation()
+  const location  = useLocation()
+  const isDesktop = useDesktop()
 
-  // Pages that show the header and bottom nav
   const shellPaths = ['/', '/activities', '/training', '/social', '/account']
-  const showShell = shellPaths.includes(location.pathname)
+  const showShell  = shellPaths.includes(location.pathname)
 
   async function triggerSync() {
-    // Fire both provider imports in parallel; ignore errors so one failure doesn't block the other
     await Promise.allSettled([
       importStravaRecent().catch(() => {}),
       importWhoopRecent().catch(() => {}),
@@ -130,56 +132,70 @@ function AuthedApp({ authStatus, oauthError, onClearError, onProviderChange, sho
     onProviderChange()
   }
 
+  const errorBanner = oauthError && (
+    <div style={{
+      background: '#FEF2F2', color: '#DC2626',
+      padding: '10px 20px', fontSize: 13,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      borderBottom: '1px solid #FECACA', flexShrink: 0,
+    }}>
+      <span>{oauthError}</span>
+      <button
+        onClick={onClearError}
+        style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}
+      >✕</button>
+    </div>
+  )
+
+  const routes = (
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/login"         element={<Navigate to="/" replace />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route path="/status"        element={<StatusPage />} />
+        <Route path="/"              element={isDesktop
+          ? <DesktopDashboard authStatus={authStatus} user={user} onSync={triggerSync} />
+          : <DashboardPage authStatus={authStatus} />}
+        />
+        <Route path="/activities"    element={<ActivitiesPage authStatus={authStatus} />} />
+        <Route path="/training"      element={<TrainingPage authStatus={authStatus} />} />
+        <Route path="/social"        element={<SocialPage />} />
+        <Route path="/account"       element={<AccountPage onProviderChange={onProviderChange} authStatus={authStatus} />} />
+        <Route path="/planner"       element={<Navigate to="/training" replace />} />
+        <Route path="/recovery"      element={<Navigate to="/" replace />} />
+        <Route path="/progress"      element={<Navigate to="/" replace />} />
+        <Route path="/dashboard"     element={<Navigate to="/" replace />} />
+        <Route path="*"              element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  )
+
+  if (isDesktop) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#F5F6FA' }}>
+        {showShell && <DesktopSidebar authStatus={authStatus} user={user} />}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+          {errorBanner}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {routes}
+          </div>
+        </div>
+        {showNameSetup && <NameSetupModal user={user} onDone={onNameDone} />}
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#F5F6FA' }}>
-
-      {/* Sticky top header */}
       {showShell && <MobileHeader onSync={triggerSync} />}
-
-      {/* OAuth error banner */}
-      {oauthError && (
-        <div style={{
-          background: '#FEF2F2', color: '#DC2626',
-          padding: '10px 20px', fontSize: 13,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderBottom: '1px solid #FECACA', flexShrink: 0,
-        }}>
-          <span>{oauthError}</span>
-          <button
-            onClick={onClearError}
-            style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}
-          >✕</button>
-        </div>
-      )}
-
-      {/* Page content */}
+      {errorBanner}
       <main style={{
         flex: 1, minWidth: 0,
         paddingBottom: showShell ? 'calc(env(safe-area-inset-bottom, 0px) + 72px)' : 0,
       }}>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/login"         element={<Navigate to="/" replace />} />
-            <Route path="/auth/callback" element={<AuthCallbackPage />} />
-            <Route path="/status"        element={<StatusPage />} />
-            <Route path="/" element={<DashboardPage authStatus={authStatus} />} />
-            <Route path="/activities"    element={<ActivitiesPage authStatus={authStatus} />} />
-            <Route path="/training"      element={<TrainingPage authStatus={authStatus} />} />
-            <Route path="/social"        element={<SocialPage />} />
-            <Route path="/account"       element={<AccountPage onProviderChange={onProviderChange} authStatus={authStatus} />} />
-            {/* Legacy redirects */}
-            <Route path="/planner"       element={<Navigate to="/training" replace />} />
-            <Route path="/recovery"      element={<Navigate to="/" replace />} />
-            <Route path="/progress"      element={<Navigate to="/" replace />} />
-            <Route path="/dashboard"     element={<Navigate to="/" replace />} />
-            <Route path="*"              element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
+        {routes}
       </main>
-
-      {/* Bottom navigation */}
       {showShell && <BottomNav />}
-
       {showNameSetup && <NameSetupModal user={user} onDone={onNameDone} />}
     </div>
   )
