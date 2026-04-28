@@ -188,7 +188,7 @@ function AuthedApp({ authStatus, oauthError, onClearError, onProviderChange, sho
 const spinStyle = {
   width: 28, height: 28, borderRadius: '50%',
   border: '2px solid #EAECF0',
-  borderTopColor: '#6366F1',
+  borderTopColor: '#e04e1f',
   animation: 'spin 0.8s linear infinite',
 }
 
@@ -201,14 +201,9 @@ function Splash() {
       background: '#F5F6FA',
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-        <div style={{
-          width: 52, height: 52, borderRadius: 16, background: '#6366F1',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <span style={{ fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: '-0.04em' }}>Z</span>
-        </div>
+        <img src="/logo.svg" alt="Logo" style={{ width: 52, height: 52, borderRadius: 16 }} />
         <span style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-0.06em', color: '#1A1B23', lineHeight: 1 }}>
-          ZO<span style={{ color: '#6366F1' }}>N</span>E
+          ZO<span style={{ color: '#e04e1f' }}>N</span>E
         </span>
       </div>
       <div style={spinStyle} />

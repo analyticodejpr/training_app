@@ -24,7 +24,7 @@ const GOAL_TYPE_LABELS = {
 }
 
 const SESSION_COLORS = {
-  easy:          '#6366F1',
+  easy:          '#e04e1f',
   tempo:         '#FB923C',
   interval:      '#FBBF24',
   long:          '#059669',
@@ -32,7 +32,7 @@ const SESSION_COLORS = {
   cross_training:'#C084FC',
   strength:      '#C084FC',
   recovery:      '#94A3B8',
-  default:       '#6366F1',
+  default:       '#e04e1f',
 }
 
 function sessionColor(type) { return SESSION_COLORS[type] || SESSION_COLORS.default }
@@ -236,7 +236,7 @@ export default function TrainingPage({ authStatus }) {
             {blocks.map(b => {
               const isExpanded = expandedBlock === b.id
               const blockWeeks = weeks.filter(w => w.block_id === b.id)
-              const blockColor = BLOCK_COLORS[b.block_type] || '#6366F1'
+              const blockColor = BLOCK_COLORS[b.block_type] || '#e04e1f'
               return (
                 <div key={b.id}>
                   <button
@@ -421,7 +421,7 @@ function WeekSchedule({ lifecycle, week, days, sessions, loading, error, generat
                 cursor: 'pointer', textAlign: 'left', width: '100%',
                 background: isToday ? '#F5F3FF' : allCompleted ? '#F0FDF4' : '#F9FAFB',
                 borderWidth: 1, borderStyle: 'solid',
-                borderColor: isToday ? '#C7D2FE' : allCompleted ? '#BBF7D0' : '#F3F4F6',
+                borderColor: isToday ? '#fdd0b5' : allCompleted ? '#BBF7D0' : '#F3F4F6',
                 fontFamily: 'inherit', transition: 'background 0.15s',
               }}
             >
@@ -436,7 +436,7 @@ function WeekSchedule({ lifecycle, week, days, sessions, loading, error, generat
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: isToday ? '#6366F1' : '#9CA3AF', letterSpacing: '-0.01em' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: isToday ? '#e04e1f' : '#9CA3AF', letterSpacing: '-0.01em' }}>
                   {dayName}{isToday ? ' · Today' : ''}
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B23', letterSpacing: '-0.02em', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -592,7 +592,7 @@ function WorkoutSheet({ day, sessions, completed, completing, onComplete, onClos
                   width: '100%', padding: '14px', borderRadius: 14, border: 'none',
                   cursor: inFlight ? 'default' : 'pointer', fontFamily: 'inherit',
                   fontSize: 15, fontWeight: 700,
-                  background: isDone ? '#D1FAE5' : inFlight ? '#A5B4FC' : '#6366F1',
+                  background: isDone ? '#D1FAE5' : inFlight ? '#f9a87a' : '#e04e1f',
                   color: isDone ? '#059669' : '#fff',
                   transition: 'all 0.2s',
                   opacity: inFlight ? 0.8 : 1,
@@ -666,7 +666,7 @@ function GoalForm({ existing, onSaved, onCancel }) {
               style={{
                 width: 40, height: 40, borderRadius: 10, border: 'none',
                 cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
-                background: form.days_per_week === d ? '#6366F1' : '#F3F4F6',
+                background: form.days_per_week === d ? '#e04e1f' : '#F3F4F6',
                 color: form.days_per_week === d ? '#fff' : '#6B7280',
                 transition: 'all 0.15s',
               }}
@@ -767,7 +767,7 @@ function PageLoader() {
     <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
       <div style={{
         width: 28, height: 28, borderRadius: '50%',
-        border: '2px solid #EAECF0', borderTopColor: '#6366F1',
+        border: '2px solid #EAECF0', borderTopColor: '#e04e1f',
         animation: 'spin 0.8s linear infinite',
       }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -778,7 +778,7 @@ function PageLoader() {
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const BLOCK_COLORS = {
-  base: '#6366F1', build: '#F59E0B', peak: '#EF4444', taper: '#10B981', recovery: '#64748B',
+  base: '#e04e1f', build: '#F59E0B', peak: '#EF4444', taper: '#10B981', recovery: '#64748B',
 }
 
 const pageWrap = { padding: '16px 16px 0', display: 'flex', flexDirection: 'column', gap: 12 }
@@ -798,7 +798,7 @@ function primaryBtn(disabled) {
     width: '100%', padding: '14px', borderRadius: 14, border: 'none',
     cursor: disabled ? 'default' : 'pointer', fontFamily: 'inherit',
     fontSize: 15, fontWeight: 700,
-    background: disabled ? '#A5B4FC' : '#6366F1', color: '#fff',
+    background: disabled ? '#f9a87a' : '#e04e1f', color: '#fff',
     transition: 'opacity 0.15s',
   }
 }
@@ -819,7 +819,7 @@ const editBtn = {
 const backBtn = {
   background: 'none', border: 'none', cursor: 'pointer',
   fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
-  color: '#6366F1', padding: 0, textAlign: 'left',
+  color: '#e04e1f', padding: 0, textAlign: 'left',
 }
 
 const selectStyle = {

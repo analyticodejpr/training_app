@@ -15,10 +15,10 @@ const FRIENDS = [
     avatar: '👩', recovery: 82, plan: 'Ironman 70.3 Build', weekKm: 62,
     schedule: [
       { day: 'Mon', type: 'swim',  label: 'Open Water 3km',    mins: 65,  color: '#22D3EE' },
-      { day: 'Tue', type: 'run',   label: 'Tempo Run 12km',    mins: 75,  color: '#6366F1' },
+      { day: 'Tue', type: 'run',   label: 'Tempo Run 12km',    mins: 75,  color: '#e04e1f' },
       { day: 'Wed', type: 'rest',  label: 'Rest',              mins: 0,   color: '#E5E7EB' },
       { day: 'Thu', type: 'ride',  label: 'Long Ride 90km',    mins: 210, color: '#FB923C' },
-      { day: 'Fri', type: 'run',   label: 'Easy Run 8km',      mins: 50,  color: '#6366F1' },
+      { day: 'Fri', type: 'run',   label: 'Easy Run 8km',      mins: 50,  color: '#e04e1f' },
       { day: 'Sat', type: 'brick', label: 'Brick Session',     mins: 120, color: '#C084FC' },
       { day: 'Sun', type: 'rest',  label: 'Rest',              mins: 0,   color: '#E5E7EB' },
     ],
@@ -27,7 +27,7 @@ const FRIENDS = [
     id: 2, name: 'James Okafor', city: 'London', sport: 'Running',
     avatar: '👨', recovery: 55, plan: 'Marathon Build', weekKm: 75,
     schedule: [
-      { day: 'Mon', type: 'run',  label: 'Easy 10km',          mins: 60,  color: '#6366F1' },
+      { day: 'Mon', type: 'run',  label: 'Easy 10km',          mins: 60,  color: '#e04e1f' },
       { day: 'Tue', type: 'run',  label: 'Interval 6×1km',     mins: 65,  color: '#FBBF24' },
       { day: 'Wed', type: 'run',  label: 'Recovery Jog 7km',   mins: 45,  color: '#9CA3AF' },
       { day: 'Thu', type: 'run',  label: 'Tempo 14km',         mins: 85,  color: '#FB923C' },
@@ -40,7 +40,7 @@ const FRIENDS = [
     id: 3, name: 'Anna Chen', city: 'Singapore', sport: 'Cycling',
     avatar: '👩', recovery: 35, plan: 'Gran Fondo Base', weekKm: 180,
     schedule: [
-      { day: 'Mon', type: 'ride', label: 'Zone 2 Ride 50km',   mins: 100, color: '#6366F1' },
+      { day: 'Mon', type: 'ride', label: 'Zone 2 Ride 50km',   mins: 100, color: '#e04e1f' },
       { day: 'Tue', type: 'rest', label: 'Rest',               mins: 0,   color: '#E5E7EB' },
       { day: 'Wed', type: 'ride', label: 'Hill Repeats 60km',  mins: 120, color: '#FBBF24' },
       { day: 'Thu', type: 'ride', label: 'Easy Spin 40km',     mins: 80,  color: '#9CA3AF' },
@@ -55,7 +55,7 @@ const FRIENDS = [
     schedule: [
       { day: 'Mon', type: 'swim', label: 'Pool Session 2km',   mins: 50,  color: '#22D3EE' },
       { day: 'Tue', type: 'run',  label: 'Fast Tempo 8km',     mins: 45,  color: '#FB923C' },
-      { day: 'Wed', type: 'ride', label: 'Power Ride 50km',    mins: 95,  color: '#6366F1' },
+      { day: 'Wed', type: 'ride', label: 'Power Ride 50km',    mins: 95,  color: '#e04e1f' },
       { day: 'Thu', type: 'rest', label: 'Rest',               mins: 0,   color: '#E5E7EB' },
       { day: 'Fri', type: 'swim', label: 'Open Water 1.5km',   mins: 40,  color: '#22D3EE' },
       { day: 'Sat', type: 'race', label: 'Sprint Triathlon',   mins: 75,  color: '#EF4444' },
@@ -66,11 +66,11 @@ const FRIENDS = [
     id: 5, name: 'Priya Sharma', city: 'Mumbai', sport: 'Running',
     avatar: '👩', recovery: 90, plan: 'Half Marathon Build', weekKm: 55,
     schedule: [
-      { day: 'Mon', type: 'run',  label: 'Easy 8km',            mins: 48,  color: '#6366F1' },
+      { day: 'Mon', type: 'run',  label: 'Easy 8km',            mins: 48,  color: '#e04e1f' },
       { day: 'Tue', type: 'run',  label: 'Interval 5×800m',     mins: 55,  color: '#FBBF24' },
       { day: 'Wed', type: 'rest', label: 'Rest',                 mins: 0,   color: '#E5E7EB' },
       { day: 'Thu', type: 'run',  label: 'Tempo 10km',           mins: 60,  color: '#FB923C' },
-      { day: 'Fri', type: 'run',  label: 'Easy 6km',             mins: 36,  color: '#6366F1' },
+      { day: 'Fri', type: 'run',  label: 'Easy 6km',             mins: 36,  color: '#e04e1f' },
       { day: 'Sat', type: 'run',  label: 'Long Run 18km',        mins: 110, color: '#059669' },
       { day: 'Sun', type: 'rest', label: 'Rest',                 mins: 0,   color: '#E5E7EB' },
     ],
@@ -82,7 +82,7 @@ const EVENTS = [
     id: 1, name: 'London Marathon', date: '2026-04-26', type: 'Marathon',
     location: 'London, UK', participants: 45000, friendsTraining: 3,
     description: "One of the world's most iconic marathons. 26.2 miles through the heart of London.",
-    typeColor: '#6366F1',
+    typeColor: '#e04e1f',
   },
   {
     id: 2, name: 'Ironman 70.3 Barcelona', date: '2026-05-17', type: 'Half Ironman',
@@ -112,7 +112,7 @@ const EVENTS = [
     id: 6, name: 'Valencia Marathon', date: '2026-12-06', type: 'Marathon',
     location: 'Valencia, Spain', participants: 22000, friendsTraining: 2,
     description: 'One of the fastest marathon courses in the world. Perfect for a PB attempt.',
-    typeColor: '#6366F1',
+    typeColor: '#e04e1f',
   },
   {
     id: 7, name: 'Zurich Triathlon Sprint', date: '2026-08-22', type: 'Sprint Tri',
@@ -357,7 +357,7 @@ function FriendDetail({ friend, joined, onJoin, onBack }) {
   return (
     <div style={pageWrap}>
       {/* Back */}
-      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#6366F1', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, padding: 0 }}>
+      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#e04e1f', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, padding: 0 }}>
         <ArrowLeft size={18} /> Back
       </button>
 
@@ -377,7 +377,7 @@ function FriendDetail({ friend, joined, onJoin, onBack }) {
           </div>
         </div>
         <div style={{ marginTop: 14, padding: '8px 14px', background: '#F5F6FA', borderRadius: 10, display: 'inline-block' }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#6366F1' }}>📋 {friend.plan}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#e04e1f' }}>📋 {friend.plan}</span>
         </div>
       </div>
 
@@ -397,7 +397,7 @@ function FriendDetail({ friend, joined, onJoin, onBack }) {
                 padding: '10px 12px',
                 borderRadius: 14,
                 background: isToday ? '#F5F3FF' : '#F9FAFB',
-                border: `1px solid ${isToday ? '#C7D2FE' : '#F3F4F6'}`,
+                border: `1px solid ${isToday ? '#fdd0b5' : '#F3F4F6'}`,
               }}>
                 <div style={{
                   width: 34, height: 34, borderRadius: 10,
@@ -408,7 +408,7 @@ function FriendDetail({ friend, joined, onJoin, onBack }) {
                   <div style={{ width: 10, height: 10, borderRadius: '50%', background: day.color }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#6366F1', letterSpacing: '-0.01em' }}>{day.day}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#e04e1f', letterSpacing: '-0.01em' }}>{day.day}</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B23', letterSpacing: '-0.02em', marginTop: 1 }}>{day.label}</div>
                   {day.mins > 0 && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>{day.mins} min</div>}
                 </div>
@@ -419,7 +419,7 @@ function FriendDetail({ friend, joined, onJoin, onBack }) {
                       padding: '6px 12px', borderRadius: 8, border: 'none',
                       cursor: 'pointer', fontFamily: 'inherit',
                       fontSize: 12, fontWeight: 700,
-                      background: isJoined ? '#D1FAE5' : '#6366F1',
+                      background: isJoined ? '#D1FAE5' : '#e04e1f',
                       color: isJoined ? '#059669' : '#fff',
                       flexShrink: 0, transition: 'all 0.15s',
                     }}
@@ -442,7 +442,7 @@ function FriendDetail({ friend, joined, onJoin, onBack }) {
 function EventDetail({ event, friends, onFriend, onBack }) {
   return (
     <div style={pageWrap}>
-      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#6366F1', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, padding: 0 }}>
+      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#e04e1f', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, padding: 0 }}>
         <ArrowLeft size={18} /> Back
       </button>
 

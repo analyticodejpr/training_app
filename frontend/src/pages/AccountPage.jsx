@@ -263,7 +263,7 @@ export default function AccountPage({ onProviderChange }) {
 
       {/* ── Hero ── */}
       <div style={{
-        background: 'linear-gradient(135deg,#6366F1,#818CF8)',
+        background: 'linear-gradient(135deg,#e04e1f,#f47c20)',
         borderRadius: 20, padding: '24px 20px',
         display: 'flex', alignItems: 'center', gap: 16,
       }}>
@@ -291,7 +291,7 @@ export default function AccountPage({ onProviderChange }) {
           <div style={{
             position: 'absolute', bottom: 0, right: 0,
             width: 20, height: 20, borderRadius: '50%',
-            background: '#fff', border: '2px solid #6366F1',
+            background: '#fff', border: '2px solid #e04e1f',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 10,
           }}>📷</div>
@@ -517,7 +517,7 @@ function PerformanceTab({ userId }) {
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={handleAutoDetect} disabled={detecting} style={{
           flex: 1, padding: '11px', borderRadius: 12,
-          border: '1px solid #C7D2FE', background: '#EEF2FF', color: '#6366F1',
+          border: '1px solid #fdd0b5', background: '#FFF3EE', color: '#e04e1f',
           cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
           opacity: detecting ? 0.6 : 1,
         }}>
@@ -538,8 +538,8 @@ function PerformanceTab({ userId }) {
           </div>
 
           {detectResult && !detectResult.error && (
-            <div style={{ background: '#EEF2FF', borderRadius: 10, padding: '10px 12px', marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#6366F1', marginBottom: 4 }}>Auto-detected values:</div>
+            <div style={{ background: '#FFF3EE', borderRadius: 10, padding: '10px 12px', marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#e04e1f', marginBottom: 4 }}>Auto-detected values:</div>
               {Object.entries(detectResult.sources).map(([key, src]) => {
                 if (!src) return null
                 const labels = { max_hr: 'Max HR', resting_hr: 'Resting HR', threshold_pace_sec_km: 'Threshold Pace' }
@@ -769,7 +769,7 @@ function ErrorBanner({ children }) {
 function PageLoader() {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
-      <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid #EAECF0', borderTopColor: '#6366F1', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid #EAECF0', borderTopColor: '#e04e1f', animation: 'spin 0.8s linear infinite' }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
@@ -799,7 +799,7 @@ const editBtn = {
 
 const primaryBtnSm = {
   flex: 1, padding: '11px', borderRadius: 12, border: 'none',
-  background: '#6366F1', color: '#fff', cursor: 'pointer', fontFamily: 'inherit',
+  background: '#e04e1f', color: '#fff', cursor: 'pointer', fontFamily: 'inherit',
   fontSize: 14, fontWeight: 700,
 }
 

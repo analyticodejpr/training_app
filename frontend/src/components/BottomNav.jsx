@@ -36,19 +36,19 @@ export default function BottomNav() {
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center', gap: 3,
               background: 'none', border: 'none', cursor: 'pointer',
-              color: active ? '#6366F1' : '#9CA3AF',
+              color: active ? '#e04e1f' : '#9CA3AF',
               transition: 'color 0.15s',
             }}
           >
             <Icon
               size={22}
               strokeWidth={active ? 2.3 : 1.7}
-              color={active ? '#6366F1' : '#9CA3AF'}
+              color={active ? '#e04e1f' : '#9CA3AF'}
             />
             <span style={{
               fontSize: 10, fontWeight: active ? 700 : 500,
               letterSpacing: '-0.01em', lineHeight: 1,
-              color: active ? '#6366F1' : '#9CA3AF',
+              color: active ? '#e04e1f' : '#9CA3AF',
               fontFamily: 'inherit',
             }}>
               {label}

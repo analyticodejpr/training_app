@@ -26,7 +26,7 @@ function recoveryColor(score) {
 }
 
 const SESSION_COLORS = {
-  easy:          '#6366F1',
+  easy:          '#e04e1f',
   tempo:         '#FB923C',
   interval:      '#FBBF24',
   long:          '#059669',
@@ -34,7 +34,7 @@ const SESSION_COLORS = {
   cross_training:'#C084FC',
   strength:      '#C084FC',
   recovery:      '#94A3B8',
-  default:       '#6366F1',
+  default:       '#e04e1f',
 }
 
 function sessionColor(type) {
@@ -129,11 +129,11 @@ function WeekBarChart({ dayHours }) {
           <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <div style={{
               width: '100%', height: barH,
-              background: isToday ? '#6366F1' : d.hours > 0 ? '#A5B4FC' : '#EAECF0',
+              background: isToday ? '#e04e1f' : d.hours > 0 ? '#f9a87a' : '#EAECF0',
               borderRadius: 4,
               transition: 'height 0.5s cubic-bezier(0.4,0,0.2,1)',
             }} />
-            <span style={{ fontSize: 10, color: isToday ? '#6366F1' : '#9CA3AF', fontWeight: isToday ? 700 : 500 }}>
+            <span style={{ fontSize: 10, color: isToday ? '#e04e1f' : '#9CA3AF', fontWeight: isToday ? 700 : 500 }}>
               {DAY_LABELS[i]}
             </span>
           </div>
@@ -263,7 +263,7 @@ export default function DashboardPage({ authStatus }) {
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#6366F1', letterSpacing: '-0.04em', lineHeight: 1 }}>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#e04e1f', letterSpacing: '-0.04em', lineHeight: 1 }}>
               {daysLeft}
             </div>
             <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600 }}>
@@ -301,7 +301,7 @@ export default function DashboardPage({ authStatus }) {
 
           {/* Quick stats */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
-            <StatPill label="HRV" value={hrv != null ? `${Math.round(hrv)} ms` : '—'} color="#6366F1" />
+            <StatPill label="HRV" value={hrv != null ? `${Math.round(hrv)} ms` : '—'} color="#e04e1f" />
             <StatPill label="Sleep" value={slp != null ? `${Math.round(slp)}%` : '—'} color="#22D3EE" />
             <StatPill label="Strain" value={str != null ? str.toFixed(1) : '—'} color="#FB923C" />
           </div>
@@ -338,7 +338,7 @@ export default function DashboardPage({ authStatus }) {
         <div
           onClick={() => navigate('/training')}
           style={{
-            background: 'linear-gradient(135deg,#6366F1,#818CF8)',
+            background: 'linear-gradient(135deg,#e04e1f,#f47c20)',
             borderRadius: 20, padding: '18px 20px', cursor: 'pointer',
           }}
         >
@@ -394,7 +394,7 @@ export default function DashboardPage({ authStatus }) {
       ) : lifecycle === 'no_plan' ? (
         <div
           onClick={() => navigate('/training')}
-          style={{ ...card, background: 'linear-gradient(135deg,#6366F1,#818CF8)', cursor: 'pointer' }}
+          style={{ ...card, background: 'linear-gradient(135deg,#e04e1f,#f47c20)', cursor: 'pointer' }}
         >
           <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6 }}>
             Training Plan
@@ -466,7 +466,7 @@ export default function DashboardPage({ authStatus }) {
           <button
             onClick={() => navigate('/account')}
             style={{
-              background: '#6366F1', color: '#fff',
+              background: '#e04e1f', color: '#fff',
               border: 'none', borderRadius: 12,
               padding: '12px 24px', fontSize: 14, fontWeight: 700,
               cursor: 'pointer', fontFamily: 'inherit',
@@ -549,7 +549,7 @@ const eyebrow = {
 }
 
 const pillLink = {
-  fontSize: 12, fontWeight: 700, color: '#6366F1',
+  fontSize: 12, fontWeight: 700, color: '#e04e1f',
   background: 'none', border: 'none', cursor: 'pointer',
   fontFamily: 'inherit', padding: 0,
 }

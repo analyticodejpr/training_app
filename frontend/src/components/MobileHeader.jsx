@@ -32,19 +32,16 @@ export default function MobileHeader({ onSync }) {
     }}>
       {/* Logo + name */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-        <div style={{
-          width: 34, height: 34, borderRadius: 10,
-          background: '#6366F1',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          <span style={{ fontSize: 15, fontWeight: 900, color: '#fff', letterSpacing: '-0.05em', lineHeight: 1 }}>Z</span>
-        </div>
+        <img
+          src="/logo.svg"
+          alt="Logo"
+          style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0 }}
+        />
         <span style={{
           fontSize: 20, fontWeight: 800,
           letterSpacing: '-0.05em', color: '#1A1B23', lineHeight: 1,
         }}>
-          ZO<span style={{ color: '#6366F1' }}>N</span>E
+          ZO<span style={{ color: '#e04e1f' }}>N</span>E
         </span>
       </div>
 
@@ -56,7 +53,7 @@ export default function MobileHeader({ onSync }) {
         <button onClick={handleSync} style={iconBtnStyle} aria-label="Sync">
           <RefreshCw
             size={18}
-            color={syncing ? '#6366F1' : '#4B5563'}
+            color={syncing ? '#e04e1f' : '#4B5563'}
             strokeWidth={1.8}
             style={{
               transition: 'transform 1.2s linear',

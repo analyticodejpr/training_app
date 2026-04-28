@@ -111,7 +111,7 @@ export default function ActivitiesPage({ authStatus }) {
               cursor: 'pointer',
               whiteSpace: 'nowrap',
               fontFamily: 'inherit',
-              background: filter === f ? '#6366F1' : '#F3F4F6',
+              background: filter === f ? '#e04e1f' : '#F3F4F6',
               color: filter === f ? '#fff' : '#6B7280',
               transition: 'all 0.15s',
               flexShrink: 0,
