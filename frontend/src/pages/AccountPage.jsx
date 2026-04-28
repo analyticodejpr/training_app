@@ -14,8 +14,8 @@ import {
   getWhoopConnection,
   disconnectStravaData,
   disconnectWhoopData,
-  importStrava90Days,
-  importWhoop90Days,
+  importStravaRecent,
+  importWhoopRecent,
   deleteAllUserData,
   connectStrava,
   connectWhoop,
@@ -205,10 +205,10 @@ export default function AccountPage({ onProviderChange }) {
     } finally { setDisconnecting(null); setConfirming(null) }
   }
 
-  async function handleImport90(provider) {
+  async function handleImportRecent(provider) {
     setImporting(provider); setImportResult(null); setError(null)
     try {
-      const result = provider === 'strava' ? await importStrava90Days() : await importWhoop90Days()
+      const result = provider === 'strava' ? await importStravaRecent() : await importWhoopRecent()
       setImportResult({ provider, count: result.imported ?? result.count ?? 0 })
       await refreshConns()
     } catch (err) {
@@ -343,7 +343,7 @@ export default function AccountPage({ onProviderChange }) {
             onConnect={connectStrava}
             onDisconnect={() => handleDisconnect('strava')}
             onCancelConfirm={() => setConfirming(null)}
-            onImport90={() => handleImport90('strava')}
+            onImportRecent={() => handleImportRecent('strava')}
           />
 
           <ProviderCard
@@ -357,7 +357,7 @@ export default function AccountPage({ onProviderChange }) {
             onConnect={connectWhoop}
             onDisconnect={() => handleDisconnect('whoop')}
             onCancelConfirm={() => setConfirming(null)}
-            onImport90={() => handleImport90('whoop')}
+            onImportRecent={() => handleImportRecent('whoop')}
           />
         </div>
       )}
@@ -650,9 +650,8 @@ function PerformanceTab({ userId }) {
 
 // ── Provider card ─────────────────────────────────────────────────────────────
 
-function ProviderCard({ label, emoji, color, conn, confirming, disconnecting, importing, importResult, fmtDate, onConnect, onDisconnect, onCancelConfirm, onImport90 }) {
-  const connected   = !!conn?.connected
-  const showImport  = connected && !conn?.lastSyncedAt
+function ProviderCard({ label, emoji, color, conn, confirming, disconnecting, importing, importResult, fmtDate, onConnect, onDisconnect, onCancelConfirm, onImportRecent }) {
+  const connected = !!conn?.connected
 
   return (
     <div style={card}>
@@ -708,23 +707,21 @@ function ProviderCard({ label, emoji, color, conn, confirming, disconnecting, im
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {showImport && (
-            <button onClick={onImport90} disabled={importing} style={{
-              flex: 1, padding: '11px', borderRadius: 12,
-              border: `1px solid ${color}44`, background: `${color}10`, color: color,
-              cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
-              opacity: importing ? 0.6 : 1,
-            }}>
-              {importing ? 'Importing…' : 'Import last 90 days'}
-            </button>
-          )}
+          <button onClick={onImportRecent} disabled={importing} style={{
+            flex: 1, padding: '11px', borderRadius: 12,
+            border: `1px solid ${color}44`, background: `${color}10`, color: color,
+            cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
+            opacity: importing ? 0.6 : 1,
+          }}>
+            {importing ? 'Importing…' : 'Import last 10 days'}
+          </button>
           {importResult && (
             <div style={{ width: '100%', fontSize: 12, color: '#059669', fontWeight: 600 }}>
               ✓ {importResult.count} records imported
             </div>
           )}
           <button onClick={onDisconnect} style={{
-            flex: showImport ? 'none' : 1, padding: '11px 16px', borderRadius: 12,
+            flex: 'none', padding: '11px 16px', borderRadius: 12,
             border: '1px solid #FECACA', background: '#FEF2F2', color: '#DC2626',
             cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
           }}>

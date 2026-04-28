@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { getAuthStatus, saveToken } from './utils/api'
+import { getAuthStatus, saveToken, importStravaRecent, importWhoopRecent } from './utils/api'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { DateRangeProvider } from './context/DateRangeContext'
 import MobileHeader   from './components/MobileHeader'
@@ -121,11 +121,20 @@ function AuthedApp({ authStatus, oauthError, onClearError, onProviderChange, sho
   const shellPaths = ['/', '/activities', '/training', '/social', '/account']
   const showShell = shellPaths.includes(location.pathname)
 
+  async function triggerSync() {
+    // Fire both provider imports in parallel; ignore errors so one failure doesn't block the other
+    await Promise.allSettled([
+      importStravaRecent().catch(() => {}),
+      importWhoopRecent().catch(() => {}),
+    ])
+    onProviderChange()
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#F5F6FA' }}>
 
       {/* Sticky top header */}
-      {showShell && <MobileHeader onSync={onProviderChange} />}
+      {showShell && <MobileHeader onSync={triggerSync} />}
 
       {/* OAuth error banner */}
       {oauthError && (

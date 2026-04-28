@@ -99,7 +99,7 @@ router.post('/import-90', requireSupabaseUser, async (req, res) => {
  */
 router.post('/import-recent', requireSupabaseUser, async (req, res) => {
   try {
-    const result = await importRecent(req.supabaseUser.id, 7);
+    const result = await importRecent(req.supabaseUser.id, 10);
     res.json({ ok: true, ...result });
   } catch (err) {
     console.error('[import-recent]', err.message);

@@ -143,12 +143,34 @@ export const disconnectWhoopData = async () => {
 }
 
 /**
+ * Trigger a fast import of the last 7 days of WHOOP data.
+ * Used by the sync button — catches missed webhook events quickly.
+ */
+export const importWhoopRecent = async () => {
+  const headers = await supabaseAuthHeaders()
+  const r = await api.post('/whoop/import-recent', null, { headers })
+  return r.data
+}
+
+/**
  * Trigger a manual import of the last 90 days of WHOOP data.
  * Idempotent — safe to call multiple times.
  */
 export const importWhoop90Days = async () => {
   const headers = await supabaseAuthHeaders()
   const r = await api.post('/whoop/import-90', null, { headers })
+  return r.data
+}
+
+/**
+ * Toggle a session's completion status.
+ * On complete: upserts a manual activities row with duration, TSS, and recovery cost.
+ * On uncomplete: deletes that activities row.
+ * Returns { sessionId, status, activityId? }.
+ */
+export const completeSession = async (sessionId) => {
+  const headers = await supabaseAuthHeaders()
+  const r = await api.post(`/planner/sessions/${sessionId}/complete`, null, { headers })
   return r.data
 }
 

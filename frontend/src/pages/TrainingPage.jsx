@@ -8,7 +8,7 @@
  */
 import { useState, useEffect, useRef } from 'react'
 import { usePlanner, usePlannerGoal, useCurrentWeekSchedule } from '../hooks/usePlanner'
-import { createGoal, generatePlan, generateSchedule, deletePlan } from '../utils/api'
+import { createGoal, generatePlan, generateSchedule, deletePlan, completeSession } from '../utils/api'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -77,8 +77,18 @@ export default function TrainingPage({ authStatus }) {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleteError,   setDeleteError]   = useState(null)
   const [showForm,      setShowForm]      = useState(false)
-  const [selectedDay,   setSelectedDay]   = useState(null) // day object for bottom sheet
+  const [selectedDay,   setSelectedDay]   = useState(null)
   const [completedSessions, setCompletedSessions] = useState({})
+  const [expandedBlock,  setExpandedBlock]  = useState(null)
+  const [completing,     setCompleting]     = useState({}) // sessionId → true while API in flight
+
+  // Sync completion state from DB whenever schedule loads
+  useEffect(() => {
+    if (!schedSessions.length) return
+    const fromDb = {}
+    schedSessions.forEach(s => { if (s.status === 'completed') fromDb[s.id] = true })
+    setCompletedSessions(fromDb)
+  }, [schedSessions])
 
   const loading = goalLoading || planLoading
 
@@ -120,6 +130,22 @@ export default function TrainingPage({ authStatus }) {
     setShowForm(false)
     if (cycle) { await handleGenerate() }
     else { setRefetchKey(k => k + 1) }
+  }
+
+  async function handleComplete(sessionId) {
+    if (completing[sessionId]) return
+    // Optimistic toggle
+    setCompletedSessions(c => ({ ...c, [sessionId]: !c[sessionId] }))
+    setCompleting(c => ({ ...c, [sessionId]: true }))
+    try {
+      await completeSession(sessionId)
+      setScheduleRefetchKey(k => k + 1) // pull updated status from DB
+    } catch {
+      // Revert on failure
+      setCompletedSessions(c => ({ ...c, [sessionId]: !c[sessionId] }))
+    } finally {
+      setCompleting(c => { const n = { ...c }; delete n[sessionId]; return n })
+    }
   }
 
   if (loading) return <PageLoader />
@@ -202,30 +228,88 @@ export default function TrainingPage({ authStatus }) {
         onGenerate={handleGenerateSchedule}
       />
 
-      {/* Blocks overview */}
+      {/* Blocks overview — expandable */}
       {blocks.length > 0 && (
         <div style={card}>
           <div style={{ ...eyebrow, marginBottom: 12 }}>Training Blocks</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {blocks.map(b => (
-              <div key={b.id} style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                background: '#F9FAFB', borderRadius: 12,
-              }}>
-                <div style={{
-                  width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-                  background: BLOCK_COLORS[b.block_type] || '#6366F1',
-                }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1B23' }}>
-                    Block {b.block_number}: {b.block_type?.charAt(0).toUpperCase() + b.block_type?.slice(1)}
-                  </div>
-                  <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
-                    Wk {b.start_week}–{b.end_week} · {b.weeks_count} weeks
-                  </div>
+            {blocks.map(b => {
+              const isExpanded = expandedBlock === b.id
+              const blockWeeks = weeks.filter(w => w.block_id === b.id)
+              const blockColor = BLOCK_COLORS[b.block_type] || '#6366F1'
+              return (
+                <div key={b.id}>
+                  <button
+                    onClick={() => setExpandedBlock(isExpanded ? null : b.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', width: '100%', border: 'none',
+                      cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                      background: isExpanded ? `${blockColor}12` : '#F9FAFB',
+                      borderRadius: isExpanded ? '12px 12px 0 0' : 12,
+                      borderBottom: isExpanded ? `1px solid ${blockColor}30` : 'none',
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    <div style={{
+                      width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+                      background: blockColor,
+                    }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1B23' }}>
+                        Block {b.block_number}: {b.block_type?.charAt(0).toUpperCase() + b.block_type?.slice(1)}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
+                        Wk {b.start_week}–{b.end_week} · {b.weeks_count} weeks
+                      </div>
+                    </div>
+                    <span style={{ color: '#9CA3AF', fontSize: 14, transition: 'transform 0.2s', transform: isExpanded ? 'rotate(90deg)' : 'none' }}>›</span>
+                  </button>
+
+                  {isExpanded && blockWeeks.length > 0 && (
+                    <div style={{
+                      background: '#FAFAFA', borderRadius: '0 0 12px 12px',
+                      border: `1px solid ${blockColor}20`, borderTop: 'none',
+                      padding: '8px 12px 12px',
+                    }}>
+                      {blockWeeks.map(w => (
+                        <div key={w.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '8px 10px', marginTop: 6,
+                          background: '#fff', borderRadius: 10,
+                          border: '1px solid #F3F4F6',
+                        }}>
+                          <div style={{
+                            width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                            background: `${blockColor}18`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 11, fontWeight: 800, color: blockColor,
+                          }}>
+                            {w.week_number}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#1A1B23' }}>
+                              Week {w.week_number}
+                              {w.week_type === 'recovery' && (
+                                <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#10B981', background: '#D1FAE5', padding: '1px 6px', borderRadius: 6 }}>Recovery</span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
+                              {formatDate(w.start_date)} – {formatDate(w.end_date)}
+                            </div>
+                          </div>
+                          {w.target_hours > 0 && (
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#6B7280' }}>
+                              {w.target_hours}h
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -262,7 +346,8 @@ export default function TrainingPage({ authStatus }) {
           day={selectedDay}
           sessions={schedSessions.filter(s => s.day_id === selectedDay.id)}
           completed={completedSessions}
-          onComplete={(sessionId) => setCompletedSessions(c => ({ ...c, [sessionId]: !c[sessionId] }))}
+          completing={completing}
+          onComplete={handleComplete}
           onClose={() => setSelectedDay(null)}
         />
       )}
@@ -384,7 +469,7 @@ function WeekSchedule({ lifecycle, week, days, sessions, loading, error, generat
 
 // ── Workout bottom sheet ──────────────────────────────────────────────────────
 
-function WorkoutSheet({ day, sessions, completed, onComplete, onClose }) {
+function WorkoutSheet({ day, sessions, completed, completing, onComplete, onClose }) {
   const sheetRef = useRef(null)
   const firstSession = sessions[0]
   const isRest = !firstSession || firstSession.session_type === 'rest'
@@ -495,23 +580,28 @@ function WorkoutSheet({ day, sessions, completed, onComplete, onClose }) {
           )}
 
           {/* Mark complete */}
-          {!isRest && sessions.map(s => (
-            <button
-              key={s.id}
-              onClick={() => onComplete(s.id)}
-              style={{
-                width: '100%', padding: '14px', borderRadius: 14, border: 'none',
-                cursor: 'pointer', fontFamily: 'inherit',
-                fontSize: 15, fontWeight: 700,
-                background: completed[s.id] ? '#D1FAE5' : '#6366F1',
-                color: completed[s.id] ? '#059669' : '#fff',
-                marginTop: sessions.length > 1 ? 0 : 0,
-                transition: 'all 0.2s',
-              }}
-            >
-              {completed[s.id] ? '✓ Marked as Complete' : `Mark as Complete${sessions.length > 1 ? ` — ${s.session_type}` : ''}`}
-            </button>
-          ))}
+          {!isRest && sessions.map(s => {
+            const isDone = completed[s.id]
+            const inFlight = completing?.[s.id]
+            return (
+              <button
+                key={s.id}
+                onClick={() => onComplete(s.id)}
+                disabled={inFlight}
+                style={{
+                  width: '100%', padding: '14px', borderRadius: 14, border: 'none',
+                  cursor: inFlight ? 'default' : 'pointer', fontFamily: 'inherit',
+                  fontSize: 15, fontWeight: 700,
+                  background: isDone ? '#D1FAE5' : inFlight ? '#A5B4FC' : '#6366F1',
+                  color: isDone ? '#059669' : '#fff',
+                  transition: 'all 0.2s',
+                  opacity: inFlight ? 0.8 : 1,
+                }}
+              >
+                {inFlight ? 'Saving…' : isDone ? '✓ Marked as Complete' : `Mark as Complete${sessions.length > 1 ? ` — ${s.session_type}` : ''}`}
+              </button>
+            )
+          })}
 
           {isRest && (
             <div style={{ textAlign: 'center', padding: '16px 0 0', color: '#6B7280', fontSize: 14 }}>

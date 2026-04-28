@@ -342,6 +342,90 @@ router.post('/schedule/generate', async (req, res) => {
   }
 });
 
+// ── POST /api/planner/sessions/:id/complete ──────────────────────────────────
+/**
+ * Mark a training_plan_session as completed (or uncompleted if already done).
+ * Also upserts a manual row in the activities table so the session appears
+ * in the activity feed with its planned duration, TSS, and recovery cost.
+ *
+ * Returns { session, activity }.
+ */
+router.post('/sessions/:id/complete', async (req, res) => {
+  const userId    = req.supabaseUser.id;
+  const sessionId = req.params.id;
+
+  try {
+    // 1. Load the session — verify it belongs to this user
+    const { data: session, error: sessErr } = await supabase
+      .from('training_plan_sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (sessErr) throw new Error(sessErr.message);
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+
+    // 2. Toggle completed ↔ scheduled
+    const newStatus    = session.status === 'completed' ? 'scheduled' : 'completed';
+    const completedAt  = newStatus === 'completed' ? new Date().toISOString() : null;
+
+    const { error: updateErr } = await supabase
+      .from('training_plan_sessions')
+      .update({ status: newStatus, completed_at: completedAt, updated_at: new Date().toISOString() })
+      .eq('id', sessionId)
+      .eq('user_id', userId);
+
+    if (updateErr) throw new Error(updateErr.message);
+
+    // 3. Upsert manual activity row (only when completing, delete when uncompleting)
+    let activity = null;
+    if (newStatus === 'completed') {
+      const todayIso = completedAt || new Date().toISOString();
+      const actPayload = {
+        user_id:           userId,
+        source_primary:    'planned',
+        // Use the session id as the provider_activity_id so we can upsert idempotently
+        provider_activity_id: `plan_session_${sessionId}`,
+        title:             session.name || `${session.sport || ''} ${session.session_type || ''}`.trim() || 'Planned session',
+        sport_type:        session.sport || 'Workout',
+        starts_at:         todayIso,
+        moving_time_s:     session.duration_min ? session.duration_min * 60 : null,
+        tss_estimate:      session.tss_estimate   || null,
+        recovery_cost:     session.recovery_cost  || null,
+        source_session_id: sessionId,
+        updated_at:        todayIso,
+      };
+
+      const { data: act, error: actErr } = await supabase
+        .from('activities')
+        .upsert(actPayload, { onConflict: 'user_id,source_primary,provider_activity_id' })
+        .select('id')
+        .single();
+
+      if (actErr) {
+        // Non-fatal — session is already marked complete
+        console.error('[planner/sessions/complete] activity upsert:', actErr.message);
+      } else {
+        activity = act;
+      }
+    } else {
+      // Remove the manual activity when uncompleting
+      await supabase
+        .from('activities')
+        .delete()
+        .eq('user_id', userId)
+        .eq('source_primary', 'planned')
+        .eq('provider_activity_id', `plan_session_${sessionId}`);
+    }
+
+    res.json({ ok: true, status: newStatus, activity });
+  } catch (err) {
+    console.error('[planner/sessions/complete]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── GET /api/planner/schedule/current ────────────────────────────────────────
 /**
  * Return the current-week schedule including lifecycle state.

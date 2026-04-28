@@ -66,6 +66,25 @@ router.get('/connection', requireSupabaseUser, async (req, res) => {
 });
 
 /**
+ * POST /api/whoop/import-recent
+ * Imports the last 7 days of WHOOP data. Used by the sync button for fast refresh.
+ * Idempotent — safe to run multiple times.
+ */
+router.post('/import-recent', requireSupabaseUser, async (req, res) => {
+  try {
+    const { importDateWindow } = require('../services/whoopSync');
+    const end   = new Date().toISOString();
+    const start = new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString();
+    const result = await importDateWindow(req.supabaseUser.id, start, end);
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('[whoop/import-recent]', err.message);
+    const status = err.message.includes('not connected') ? 400 : 500;
+    res.status(status).json({ error: err.message });
+  }
+});
+
+/**
  * POST /api/whoop/import-90
  * Triggers a manual import of the last 90 days of WHOOP data.
  * Idempotent — safe to run multiple times.
