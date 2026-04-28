@@ -155,6 +155,8 @@ function buildSchedule(weekRow, blockRow, goal, features, scoringCtx = null) {
   const weekType   = weekTypeFromRow(weekRow, blockType);
 
   // ── 1. Build the 7 day date map ────────────────────────────────────────────
+  const todayStr = new Date().toISOString().split('T')[0];
+
   const days = WEEK_DAYS.map((dayName, i) => ({
     day_of_week: dayName,
     day_date:    addDays(weekStart, i),
@@ -185,7 +187,8 @@ function buildSchedule(weekRow, blockRow, goal, features, scoringCtx = null) {
   for (const preferred of TRAINING_PRIORITY) {
     if (trainingDays.length >= safeSessions) break;
     const day = days.find(d => d.day_of_week === preferred);
-    if (day && day.slot_type === 'rest') {
+    // Skip days that have already passed — they remain 'rest'
+    if (day && day.slot_type === 'rest' && day.day_date >= todayStr) {
       day.slot_type = 'training';
       trainingDays.push(day);
     }

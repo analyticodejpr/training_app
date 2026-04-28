@@ -615,6 +615,17 @@ function nextMonday(date) {
   return d;
 }
 
+// Returns the Monday of the current calendar week (UTC).
+// If today is already Monday, returns today.
+function thisWeekMonday() {
+  const d   = new Date();
+  const day = d.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
 // ── Default athlete state (backward-compat fallback) ──────────────────────────
 
 /**
@@ -751,8 +762,10 @@ function planCycle(goal, features, athleteState) {
   );
 
   // ── Start / end dates ────────────────────────────────────────────────────────
+  // Always start from this week's Monday so the day labels (mon→sun) in the
+  // scheduler line up with the correct calendar dates, even mid-week.
 
-  const startDate = new Date();
+  const startDate = thisWeekMonday();
   const endDate   = addWeeks(startDate, totalWeeks);
 
   return {
