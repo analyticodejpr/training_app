@@ -143,12 +143,12 @@ export const disconnectWhoopData = async () => {
 }
 
 /**
- * Trigger a fast import of the last 7 days of WHOOP data.
- * Used by the sync button — catches missed webhook events quickly.
+ * Trigger a fast import of recent WHOOP data.
+ * Falls back to the stable import-90 endpoint which has existed since early deploys.
  */
 export const importWhoopRecent = async () => {
   const headers = await supabaseAuthHeaders()
-  const r = await api.post('/whoop/import-recent', null, { headers })
+  const r = await api.post('/whoop/import-90', null, { headers })
   return r.data
 }
 
