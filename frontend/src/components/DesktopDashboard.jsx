@@ -161,7 +161,7 @@ function KpiCard({ label, value, unit, sub, color, ring, trend, icon }) {
   return (
     <div style={S.kpiCard}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
         <div style={{ fontSize: 13, color: color + '99' }}>{icon}</div>
       </div>
 
@@ -174,7 +174,7 @@ function KpiCard({ label, value, unit, sub, color, ring, trend, icon }) {
             <div style={{ fontSize: 26, fontWeight: 800, color, letterSpacing: '-0.03em', lineHeight: 1 }}>
               {value ?? '—'}<span style={{ fontSize: 12, fontWeight: 500, marginLeft: 2 }}>{unit}</span>
             </div>
-            <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{sub}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>
           </div>
         </div>
       ) : (
@@ -201,10 +201,10 @@ function ActivityRow({ act }) {
     <div style={S.actRow}>
       <div style={{ ...S.actIcon, background: cfg.bg, color: cfg.color }}>{cfg.icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1B23', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {act.name}
         </div>
-        <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
           {act.start_date ? new Date(act.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}
           {act.avg_heart_rate ? ` · ${Math.round(act.avg_heart_rate)} bpm` : ''}
           {act.total_elevation_gain ? ` · ${Math.round(act.total_elevation_gain)}m ↑` : ''}
@@ -212,7 +212,7 @@ function ActivityRow({ act }) {
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div style={{ fontWeight: 700, fontSize: 13, color: cfg.color }}>{dist}</div>
-        <div style={{ fontSize: 11, color: '#9CA3AF' }}>{dur}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{dur}</div>
       </div>
     </div>
   )
@@ -484,17 +484,17 @@ export default function DesktopDashboard({ authStatus, user, onSync }) {
 const S = {
   page:       { padding: '28px 32px', animation: 'fadeIn 0.25s ease' },
   header:     { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 },
-  eyebrow:    { fontSize: 10, fontWeight: 700, color: '#9CA3AF', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 },
-  title:      { fontSize: 26, fontWeight: 800, color: '#1A1B23', letterSpacing: '-0.03em' },
-  connectBtn: { padding: '7px 14px', background: `rgba(224,78,31,0.08)`, border: `1px solid rgba(224,78,31,0.25)`, borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151', display: 'flex', alignItems: 'center', gap: 6 },
+  eyebrow:    { fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 },
+  title:      { fontSize: 26, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.03em' },
+  connectBtn: { padding: '7px 14px', background: `rgba(224,78,31,0.08)`, border: `1px solid rgba(224,78,31,0.25)`, borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 },
   kpiRow:     { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 16 },
-  kpiCard:    { background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 14, padding: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' },
+  kpiCard:    { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px', boxShadow: 'var(--shadow-xs)', transition: 'background 0.3s, border-color 0.3s' },
   row:        { display: 'flex', gap: 12, marginBottom: 16 },
-  card:       { background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 14, padding: '20px', flex: 1, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' },
+  card:       { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px', flex: 1, boxShadow: 'var(--shadow-xs)', transition: 'background 0.3s, border-color 0.3s' },
   cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  cardTitle:  { fontSize: 14, fontWeight: 700, color: '#1A1B23' },
-  cardSub:    { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+  cardTitle:  { fontSize: 14, fontWeight: 700, color: 'var(--text)' },
+  cardSub:    { fontSize: 11, color: 'var(--text-muted)', marginTop: 2 },
   linkBtn:    { background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: BRAND, fontWeight: 600 },
-  actRow:     { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid #F9FAFB' },
+  actRow:     { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border)' },
   actIcon:    { width: 34, height: 34, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 },
 }

@@ -67,7 +67,7 @@ export default function ChatPanel({ open, onClose, mobile = false }) {
   const panelStyle = mobile
     ? {
         position: 'fixed', inset: 0,
-        background: '#FFFFFF',
+        background: 'var(--surface)',
         display: 'flex', flexDirection: 'column',
         zIndex: 1001,
         transform: open ? 'translateY(0)' : 'translateY(100%)',
@@ -76,13 +76,13 @@ export default function ChatPanel({ open, onClose, mobile = false }) {
     : {
         position: 'fixed', top: 0, right: 0, bottom: 0,
         width: 380,
-        background: '#FFFFFF',
+        background: 'var(--surface)',
         boxShadow: '-4px 0 24px rgba(0,0,0,0.10)',
         display: 'flex', flexDirection: 'column',
         zIndex: 1001,
         transform: open ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
-        borderLeft: '1px solid #E5E7EB',
+        borderLeft: '1px solid var(--border)',
       }
 
   return (
@@ -99,9 +99,9 @@ export default function ChatPanel({ open, onClose, mobile = false }) {
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: mobile ? 'max(env(safe-area-inset-top,0px),16px) 18px 14px' : '16px 18px',
-          borderBottom: '1px solid #F3F4F6',
+          borderBottom: '1px solid var(--border)',
           flexShrink: 0,
-          background: '#FFFFFF',
+          background: 'var(--surface)',
         }}>
           <div style={{
             width: 34, height: 34, borderRadius: 10,
@@ -114,7 +114,7 @@ export default function ChatPanel({ open, onClose, mobile = false }) {
             </svg>
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1B23' }}>Training Assistant</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Training Assistant</div>
             <div style={{ fontSize: 11, color: '#34D399', fontWeight: 600 }}>● Online</div>
           </div>
           <button
@@ -142,8 +142,8 @@ export default function ChatPanel({ open, onClose, mobile = false }) {
                 maxWidth: '78%',
                 padding: '9px 13px',
                 borderRadius: m.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-                background: m.role === 'user' ? `linear-gradient(135deg,${BRAND},${BRAND_LT})` : '#F3F4F6',
-                color: m.role === 'user' ? '#fff' : '#1A1B23',
+                background: m.role === 'user' ? `linear-gradient(135deg,${BRAND},${BRAND_LT})` : 'var(--surface-2)',
+                color: m.role === 'user' ? '#fff' : 'var(--text)',
                 fontSize: 13, lineHeight: 1.5, wordBreak: 'break-word',
               }}>
                 {m.text}
@@ -155,7 +155,7 @@ export default function ChatPanel({ open, onClose, mobile = false }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
               <BotAvatar />
               <div style={{
-                background: '#F3F4F6', borderRadius: '14px 14px 14px 4px',
+                background: 'var(--surface-2)', borderRadius: '14px 14px 14px 4px',
                 padding: '9px 14px', display: 'flex', gap: 4, alignItems: 'center',
               }}>
                 {[0, 1, 2].map(i => (
@@ -177,8 +177,8 @@ export default function ChatPanel({ open, onClose, mobile = false }) {
           <div style={{ padding: '0 18px 10px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {["How's my recovery?", "What's my plan this week?", "Should I train today?"].map(p => (
               <button key={p} onClick={() => setInput(p)} style={{
-                padding: '5px 11px', border: '1px solid #E5E7EB', borderRadius: 20,
-                background: '#F9FAFB', fontSize: 11, color: '#6B7280',
+                padding: '5px 11px', border: '1px solid var(--border)', borderRadius: 20,
+                background: 'var(--surface-2)', fontSize: 11, color: 'var(--text-muted)',
                 cursor: 'pointer', fontWeight: 500,
               }}>{p}</button>
             ))}
@@ -188,9 +188,9 @@ export default function ChatPanel({ open, onClose, mobile = false }) {
         {/* Input */}
         <div style={{
           padding: mobile ? `12px 14px max(env(safe-area-inset-bottom,0px),12px)` : '12px 14px',
-          borderTop: '1px solid #F3F4F6',
+          borderTop: '1px solid var(--border)',
           display: 'flex', gap: 8, alignItems: 'flex-end',
-          flexShrink: 0, background: '#FFFFFF',
+          flexShrink: 0, background: 'var(--surface)',
         }}>
           <textarea
             value={input}
@@ -199,11 +199,11 @@ export default function ChatPanel({ open, onClose, mobile = false }) {
             placeholder="Ask me anything…"
             rows={1}
             style={{
-              flex: 1, resize: 'none', border: '1px solid #E5E7EB',
+              flex: 1, resize: 'none', border: '1px solid var(--border)',
               borderRadius: 10, padding: '8px 12px',
               fontSize: 14, fontFamily: 'inherit', lineHeight: 1.5,
-              outline: 'none', color: '#1A1B23',
-              background: '#F9FAFB',
+              outline: 'none', color: 'var(--text)',
+              background: 'var(--surface-2)',
               maxHeight: 100, overflowY: 'auto',
             }}
           />
@@ -212,7 +212,7 @@ export default function ChatPanel({ open, onClose, mobile = false }) {
             disabled={!input.trim()}
             style={{
               width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-              background: input.trim() ? `linear-gradient(135deg,${BRAND},${BRAND_LT})` : '#E5E7EB',
+              background: input.trim() ? `linear-gradient(135deg,${BRAND},${BRAND_LT})` : 'var(--surface-3)',
               border: 'none', cursor: input.trim() ? 'pointer' : 'default',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'background 0.15s',

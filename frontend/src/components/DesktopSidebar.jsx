@@ -93,10 +93,10 @@ export default function DesktopSidebar({ authStatus, user }) {
                     ...(!active && isHov ? S.navItemHov : {}),
                   }}
                 >
-                  <span style={{ color: active ? BRAND : '#9CA3AF', transition: 'color 0.15s' }}>
+                  <span style={{ color: active ? BRAND : 'var(--text-muted)', transition: 'color 0.15s' }}>
                     <NavIcon path={item.icon} />
                   </span>
-                  <span style={{ flex: 1, color: active ? '#1A1B23' : '#6B7280', fontSize: 13, fontWeight: active ? 700 : 500 }}>
+                  <span style={{ flex: 1, color: active ? 'var(--text)' : 'var(--text-muted)', fontSize: 13, fontWeight: active ? 700 : 500 }}>
                     {item.label}
                   </span>
                   {connected !== null && (
@@ -123,10 +123,10 @@ export default function DesktopSidebar({ authStatus, user }) {
           <div style={S.avatarGlow} />
         </div>
         <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1B23', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {displayName}
           </div>
-          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>View Profile</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>View Profile</div>
         </div>
         <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={2} strokeLinecap="round">
           <path d="M9 18l6-6-6-6" />
@@ -139,21 +139,22 @@ export default function DesktopSidebar({ authStatus, user }) {
 const S = {
   aside: {
     width: 220, minWidth: 220, flexShrink: 0,
-    background: '#FFFFFF',
-    borderRight: '1px solid #E5E7EB',
+    background: 'var(--surface)',
+    borderRight: '1px solid var(--border)',
     display: 'flex', flexDirection: 'column',
     height: '100vh', overflow: 'hidden',
+    transition: 'background 0.3s, border-color 0.3s',
   },
   logoRow: {
     display: 'flex', alignItems: 'center', gap: 10,
     padding: '20px 18px 16px',
-    borderBottom: '1px solid #EAECF0',
+    borderBottom: '1px solid var(--border)',
   },
-  logoText: { fontWeight: 800, fontSize: 16, color: '#1A1B23', letterSpacing: '-0.04em' },
+  logoText: { fontWeight: 800, fontSize: 16, color: 'var(--text)', letterSpacing: '-0.04em' },
   nav: { flex: 1, overflowY: 'auto', padding: '8px 10px' },
   section: { marginBottom: 2 },
   sectionLabel: {
-    fontSize: 9, fontWeight: 700, color: '#D1D5DB',
+    fontSize: 9, fontWeight: 700, color: 'var(--text-dim)',
     letterSpacing: '0.12em', padding: '12px 8px 5px', textTransform: 'uppercase',
   },
   navItem: {
@@ -166,13 +167,13 @@ const S = {
     background: `rgba(224,78,31,0.07)`,
     boxShadow: 'inset 0 0 0 1px rgba(224,78,31,0.18)',
   },
-  navItemHov: { background: '#F9FAFB' },
+  navItemHov: { background: 'var(--surface-2)' },
   profile: {
     display: 'flex', alignItems: 'center', gap: 10,
     margin: '8px 10px 12px',
     padding: '10px 12px',
-    background: '#FFFFFF',
-    border: '1px solid #EAECF0',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
     borderRadius: 10, cursor: 'pointer',
     transition: 'border-color 0.2s, background 0.2s',
     width: 'calc(100% - 20px)',

@@ -146,7 +146,7 @@ function metricsToForm(data) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function AccountPage({ onProviderChange }) {
+export default function AccountPage({ onProviderChange, theme, setTheme }) {
   const { user, signOut } = useAuth()
   const [activeTab, setActiveTab] = useState('performance')
 
@@ -394,6 +394,40 @@ export default function AccountPage({ onProviderChange }) {
                 <button onClick={() => { setEditName(displayName); setIsEditing(true) }} style={editBtn}>Edit</button>
               </div>
             )}
+          </div>
+
+          {/* Appearance */}
+          <div style={card}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#9CA3AF', marginBottom: 12 }}>
+              Appearance
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {[
+                { key: 'light', label: 'Light', icon: '☀️' },
+                { key: 'dark',  label: 'Dark',  icon: '🌙' },
+              ].map(({ key, label, icon }) => {
+                const active = (theme || 'light') === key
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setTheme?.(key)}
+                    style={{
+                      padding: '12px 0',
+                      borderRadius: 12,
+                      border: active ? '2px solid #e04e1f' : '1.5px solid #E5E7EB',
+                      background: active ? 'rgba(224,78,31,0.07)' : 'transparent',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', gap: 4,
+                      transition: 'border-color 0.15s, background 0.15s',
+                    }}
+                  >
+                    <span style={{ fontSize: 20 }}>{icon}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: active ? '#e04e1f' : '#6B7280' }}>{label}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           {/* Sign out */}

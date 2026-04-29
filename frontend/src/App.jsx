@@ -4,6 +4,7 @@ import { getAuthStatus, saveToken, importStravaRecent, importWhoopRecent } from 
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { DateRangeProvider } from './context/DateRangeContext'
 import { useDesktop }        from './hooks/useDesktop'
+import { useTheme }          from './hooks/useTheme'
 import MobileHeader   from './components/MobileHeader'
 import BottomNav      from './components/BottomNav'
 import DesktopSidebar from './components/DesktopSidebar'
@@ -36,6 +37,7 @@ export default function App() {
 
 function AppShell() {
   const { user, loading: authLoading } = useAuth()
+  const [theme, setTheme] = useTheme()
 
   const [authStatus,    setAuthStatus]    = useState(null)
   const [apiLoading,    setApiLoading]    = useState(true)
@@ -114,11 +116,13 @@ function AppShell() {
       showNameSetup={showNameSetup}
       onNameDone={() => setShowNameSetup(false)}
       user={user}
+      theme={theme}
+      setTheme={setTheme}
     />
   )
 }
 
-function AuthedApp({ authStatus, oauthError, onClearError, onProviderChange, showNameSetup, onNameDone, user }) {
+function AuthedApp({ authStatus, oauthError, onClearError, onProviderChange, showNameSetup, onNameDone, user, theme, setTheme }) {
   const location   = useLocation()
   const isDesktop  = useDesktop()
   const [chatOpen, setChatOpen] = useState(false)
@@ -162,7 +166,7 @@ function AuthedApp({ authStatus, oauthError, onClearError, onProviderChange, sho
         <Route path="/activities"    element={<ActivitiesPage authStatus={authStatus} />} />
         <Route path="/training"      element={<TrainingPage authStatus={authStatus} />} />
         <Route path="/social"        element={<SocialPage />} />
-        <Route path="/account"       element={<AccountPage onProviderChange={onProviderChange} authStatus={authStatus} />} />
+        <Route path="/account"       element={<AccountPage onProviderChange={onProviderChange} authStatus={authStatus} theme={theme} setTheme={setTheme} />} />
         <Route path="/planner"       element={<Navigate to="/training" replace />} />
         <Route path="/recovery"      element={<Navigate to="/" replace />} />
         <Route path="/progress"      element={<Navigate to="/" replace />} />
@@ -174,7 +178,7 @@ function AuthedApp({ authStatus, oauthError, onClearError, onProviderChange, sho
 
   if (isDesktop) {
     return (
-      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#F5F6FA' }}>
+      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
         {showShell && <DesktopSidebar authStatus={authStatus} user={user} />}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
           {errorBanner}
@@ -188,7 +192,7 @@ function AuthedApp({ authStatus, oauthError, onClearError, onProviderChange, sho
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#F5F6FA' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg)' }}>
       {showShell && <MobileHeader onSync={triggerSync} onChatOpen={() => setChatOpen(true)} />}
       {errorBanner}
       <main style={{
