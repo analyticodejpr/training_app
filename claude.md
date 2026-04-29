@@ -1,331 +1,159 @@
 # CLAUDE.md
 
-## Project Overview
-
-This repo is a training dashboard app that combines **Strava** and **WHOOP** data, with **Supabase** as the source of truth.
-
-The app already supports:
-- auth / login
-- Google sign-in
-- protected dashboard routes
-- Strava OAuth + manual import
-- WHOOP OAuth + manual import
-- webhook infrastructure for Strava and WHOOP
-- incremental sync behavior
-- dashboard pages reading normalized Supabase data
-
-The current product expansion is an **AI training planner**, but it is intentionally a **hybrid planner**, not a freeform AI coach.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ---
 
-## Core Architecture Rules
+## Development Commands
 
-These rules are non-negotiable unless explicitly changed.
+### Backend (Express API)
 
-### Source of truth
-- Supabase is the source of truth.
-- Provider data is synced into Supabase.
-- Raw provider payloads are stored for backup, debugging, and reprocessing.
-- Normalized app tables power the app.
-- Dashboard pages read from Supabase, not directly from live provider APIs.
-- Planner data must remain user-scoped and protected by RLS.
+```bash
+# Run locally (loads env from backend/.env)
+node api/server.js
 
-### Planner architecture
-Use the **hybrid engine** model:
+# Run all tests (Node built-in test runner — no Jest)
+npm test
+# "npm test" = node --test api/services/__tests__/**/*.test.js
 
-- **Code owns**
-  - plan structure
-  - progression logic
-  - constraints
-  - safety
-  - validation
-  - scheduling
-  - workout filtering
-  - workout scoring
-  - adaptation rules
-  - deterministic matching logic later
+# Run a single test file
+node --test api/services/__tests__/scheduler.test.js
+node --test api/services/__tests__/plannerScoring.test.js
 
-- **AI owns**
-  - naming
-  - explanations
-  - summaries
-  - rationale
-  - bounded personalization only
+# Named test subsets
+npm run test:features   # featureGenerator.test.js
+npm run test:planner    # planner.test.js
+```
 
-### Hard constraints
-- Do **not** send raw provider tables directly into planner logic.
-- Stable features must be computed first and used as planner inputs.
-- Workout sessions must come from a **bounded parameterized workout library**.
-- AI must **not** invent freeform workout logic.
-- The app shows the **full plan at week level**.
-- Only the **current 7 days** should be detailed.
-- Future weeks remain high-level.
-- Support:
-  - full-data users
-  - partial-data users
-  - low-data users
+### Frontend (Vite + React)
+
+```bash
+cd frontend
+npm run dev      # Vite dev server (hot reload)
+npm run build    # Production build → frontend/dist/
+npm run preview  # Preview the production build locally
+```
+
+### Deployment
+
+- **Frontend** → Vercel (auto-deploys from GitHub `main` via `vercel-build` script)
+- **Backend** → Railway (NOT connected to GitHub; must deploy manually):
+  ```bash
+  railway up --service training-api
+  ```
+  The Railway service runs `node api/server.js`. Never use the "Redeploy" button — it only restarts the existing container without pushing new code.
+
+### Environment
+
+- Backend reads `backend/.env` — contains `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SECRET_KEY`, `STRAVA_CLIENT_ID/SECRET`, `WHOOP_CLIENT_ID/SECRET`, `TOKEN_ENCRYPTION_KEY`, `FRONTEND_URL`.
+- Frontend reads `frontend/.env.local` — contains `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL`.
 
 ---
 
-## Current Product State
+## Architecture Overview
 
-Assume this is already implemented unless the code clearly contradicts it.
+### Two-service split
 
-### Phase 1 — Planning foundation
-Completed:
-- goal intake
-- athlete context snapshots
-- stable feature generation
-- deterministic cycle / block / week planner
-- plan persistence at cycle / block / week level
-- planner overview UI
+```
+frontend/   React 18 + Vite SPA        → Vercel
+api/        Express REST API            → Railway (via api/server.js locally, api/[...path].js on Vercel)
+backend/    Legacy backend (not in use) — ignore
+```
 
-Planner tables:
-- `training_goals`
-- `athlete_context_snapshots`
-- `derived_training_features`
-- `training_plan_cycles`
-- `training_plan_blocks`
-- `training_plan_weeks`
+The frontend and backend are **separate deployments** that communicate over HTTP. The frontend calls `VITE_API_URL/api/...` with a Bearer session token. The backend mounts all routes under `/api/`.
 
-### Phase 2A — Current-week scheduler foundation
-Completed:
-- scheduling tables are in use:
-  - `workout_library`
-  - `training_plan_days`
-  - `training_plan_sessions`
+### Authentication flow
 
-`workout_library` includes scheduler metadata:
-- `slot_type`
-- `week_types`
-- `recovery_cost`
-- `equipment_requirements`
-- `contraindications`
-- `progression_family`
+Supabase Auth handles login (Google OAuth via PKCE). After sign-in the frontend holds a Supabase session. Every API request sends `X-Supabase-Token: <supabase_jwt>`. The `requireSupabaseUser` middleware (`api/middleware/requireSupabaseUser.js`) validates the JWT against Supabase and attaches `req.supabaseUser`. Provider OAuth tokens (Strava, WHOOP) are encrypted with AES and stored in a session blob returned as `X-Session-Token` in responses.
 
-Workout library coverage has already been expanded to 41 templates.
+### Data pipeline
 
-Completed scheduler / selection work:
-- `pickWorkout()` takes:
-  - `sport`
-  - `slotType`
-  - `sessionType`
-  - `blockType`
-  - `weekType`
-  - `level`
-- selection already uses slot/week-aware filtering and fallback
-- scheduler uses `slot_type` on day rows
-- recovery week days use `slot_type = 'recovery'`
+```
+Strava / WHOOP APIs
+  → api/services/stravaSync.js / whoopSync.js   (normalise + upsert raw payloads)
+  → Supabase tables: activities, whoop_daily_metrics, raw_*
+  → api/services/featureGenerator.js            (compute derived_training_features)
+  → api/services/plannerOrchestrator.js         (generate plan: cycle → blocks → weeks)
+  → api/services/schedulerOrchestrator.js       (generate current-week days + sessions)
+  → Frontend reads directly from Supabase via hooks
+```
 
-Completed lifecycle work:
-- lifecycle states:
-  - `pre_start`
-  - `active`
-  - `completed`
-- schedule generation is lifecycle-aware
-- non-active plans block schedule generation with explicit errors
-- routes and UI already handle lifecycle-aware schedule states
+Frontend **never** reads live provider APIs — it reads only from Supabase.
 
-Completed tests:
-- workout library tests
-- lifecycle tests
+### Frontend data hooks
 
-### Phase 3 — First scoring slice
-Already completed:
-- `api/services/plannerScoring.js`
-- `computeReadinessScore(features)`:
-  - derives score / tier / source from recovery-related signals
-- `computeLoadTolerance(features)`:
-  - derives score / tier / source from consistency, sessions per week, and low-volume penalties
-- `computeSchedulingContext(features)`:
-  - combines readiness + load tolerance into current-week scheduling context
-  - includes `hardSessionCapReduction`
-  - includes `readinessTier`
+All Supabase reads go through hooks in `frontend/src/hooks/`:
+- `useSupabaseMetrics` — WHOOP daily metrics
+- `useSupabaseActivities` — Strava activities
+- `usePlanner` — plan goal, current-week schedule (`usePlannerGoal`, `useCurrentWeekSchedule`)
+- `useDesktop` — responsive breakpoint (≥1024px = desktop layout)
+- `useTheme` — light/dark theme, persisted to `localStorage`, applies `data-theme` on `<html>`
 
-Scheduler integration already completed:
-- `buildSchedule()` accepts optional `scoringCtx`
-- low readiness / low load tolerance can reduce weekly hard sessions by 1
-- `readinessTier` is passed into workout selection
-- low readiness biases selection toward lower recovery-cost workouts
-- existing behavior is preserved when `scoringCtx` is null
+### Responsive layout
 
-Testing already exists for:
-- readiness scoring
-- load tolerance scoring
-- scheduling context
-- scheduler integration for the current cap behavior
+`App.jsx` (`AuthedApp`) uses `useDesktop()` to branch:
+- **Desktop (≥1024px)**: `DesktopSidebar` (220px fixed) + scrollable main. Route `/` renders `DesktopDashboard`.
+- **Mobile (<1024px)**: `MobileHeader` + `BottomNav` shell. Route `/` renders `DashboardPage`.
 
-### Important current state
-The system already has:
-- deterministic week-level planning
-- deterministic current-week scheduling
-- bounded workout library selection
-- lifecycle-aware schedule generation
-- initial score-aware scheduling
-- no AI dependency for valid schedule generation
+All other routes (`/activities`, `/training`, `/account`, etc.) share the same page components across both layouts.
 
----
+### Theme system
 
-## Current Development Focus
+CSS design tokens live in `frontend/src/index.css` under `:root` (light) and `[data-theme="dark"]`. The dark palette is already fully defined — components must use `var(--surface)`, `var(--border)`, `var(--text)`, `var(--text-muted)` etc. rather than hardcoded hex to participate in the theme. `useTheme` writes `data-theme` to `document.documentElement`.
 
-The repo is now in **Phase 3 — Scoring and adaptation**.
+### Planner service layer (backend)
 
-The next work should stay inside Phase 3 before moving to execution feedback.
+All planner logic is deterministic code — AI is not involved in scheduling:
 
-### Preferred next implementation slice
-Unless the code clearly shows a better immediate gap, the next step should be:
+| File | Responsibility |
+|------|---------------|
+| `featureGenerator.js` | Computes `derived_training_features` from raw activity + WHOOP data |
+| `athleteState.js` | Derives athlete level, data mode (full / partial / low) |
+| `plannerScoring.js` | `computeReadinessScore`, `computeLoadTolerance`, `computeSchedulingContext` |
+| `planner.js` | Generates cycle → blocks → weeks (macro structure) |
+| `plannerOrchestrator.js` | End-to-end plan generation + Supabase persistence |
+| `scheduler.js` | Assigns workouts to days for the current week using `pickWorkout()` |
+| `schedulerOrchestrator.js` | Lifecycle check + schedule generation + persistence |
+| `workoutLibrary.js` | 41-template bounded workout library; slug-keyed |
 
-1. add **confidence / resilience scoring**
-2. refactor selection toward explicit **session suitability scoring**
-3. deepen current-week adaptation slightly beyond the initial hard-session cap
-4. keep all logic deterministic, interpretable, and bounded
+Orchestrators are the **only** modules that write to Supabase. Service files are pure logic.
 
-### What should still be added in Phase 3
-Target additions:
-- `confidence / resilience` score
-- component-based session suitability scoring
-- more explicit candidate scoring breakdown
-- inspectable current-week adaptation reasons
-- limited adaptation of:
-  - quality density
-  - long-session aggressiveness
-  - lower-cost / lower-risk workout preference
+### Key Supabase tables
 
-### What “session suitability scoring” should mean
-Move toward explicit candidate scoring components, for example:
-- week objective fit
-- day slot fit
-- athlete level fit
-- readiness / recovery fit
-- load tolerance fit
-- confidence / resilience fit
-- equipment fit
-- contraindication penalty
-- progression-family alignment
-- recent training fit
+**Auth / user:** `profiles`
 
-Code must retain final authority.
-Filtering and validation remain code-driven.
+**Provider data:** `activities` (Strava), `whoop_daily_metrics`, raw backup tables
 
-### What “deepen adaptation” should mean
-Stay narrow and current-week only. Examples:
-- reduce long-session target when load tolerance is weak
-- prefer lower-risk quality variants when readiness is low
-- keep existing quality-session cap behavior unless a cleaner equivalent is clearly better
-- make adaptation reasons inspectable for logging and future UI
+**Planner:** `training_goals` → `training_plan_cycles` → `training_plan_blocks` → `training_plan_weeks` → `training_plan_days` → `training_plan_sessions`
+
+**Computed:** `derived_training_features`, `athlete_context_snapshots`
+
+**Library:** `workout_library`
+
+All planner tables have RLS scoped to `user_id`. The backend uses the service-role key (bypasses RLS) but always scopes writes to the verified `supabaseUser.id`.
+
+### API routes
+
+```
+/api/auth/*       — Supabase token verification, Strava/WHOOP OAuth callbacks
+/api/strava/*     — Import recent, import 90 days, disconnect
+/api/whoop/*      — Import recent, import 90 days, disconnect
+/api/planner/*    — Generate plan, get schedule, lifecycle operations
+/api/webhooks/*   — Strava + WHOOP inbound webhooks (HMAC verified)
+```
+
+### Test runner
+
+Tests use **Node's built-in `node:test` module** (no Jest, no Mocha). Files live in `api/services/__tests__/`. Run individual files with `node --test <path>`.
 
 ---
 
-## Intentionally Out of Scope Right Now
+## Current Development Phase
 
-Do not drift into these areas unless the task explicitly requires them.
+The planner is in **Phase 3 — Scoring and adaptation**. Do not add execution feedback, compliance tracking, activity-to-plan matching, or future-week daily scheduling — those are explicitly out of scope. Phase 3 targets:
 
-- activity-to-plan matching
-- compliance tracking
-- session completion workflow
-- webhook-driven adaptation
-- automatic rescheduling from new readiness signals
-- future-week daily scheduling
-- polished coaching chat UX
-- large speculative schema redesign
+- confidence / resilience scoring component
+- explicit session suitability scoring (replacing opaque `pickWorkout` fallbacks)
+- deeper current-week adaptation (long-session aggressiveness, quality density)
 
-These belong later, primarily in execution feedback phases.
-
----
-
-## Coding Principles For This Repo
-
-### 1. Verify before changing
-Before making changes:
-- inspect the relevant code paths
-- verify what is already implemented
-- do not re-implement completed milestones
-- do not broaden scope unnecessarily
-
-### 2. Prefer narrow, high-value slices
-When choosing the next step:
-- prefer backend-first
-- prefer deterministic logic
-- prefer the smallest slice that materially improves scheduling quality
-- avoid speculative abstractions unless already justified by the repo
-
-### 3. Preserve architecture
-Do not:
-- bypass Supabase
-- move planner logic into prompts
-- make AI responsible for scheduling correctness
-- introduce freeform workout generation
-- generate long-range rigid daily plans
-
-### 4. Keep planner logic interpretable
-When adding scoring or selection logic:
-- use multiple interpretable components
-- avoid a single black-box master score
-- make rationale inspectable in code and tests
-- keep final authority in deterministic code
-
-### 5. Support missing-data users
-Planner logic must degrade gracefully across:
-- full-data mode
-- partial-data mode
-- low-data mode
-
-Do not assume both Strava and WHOOP are available.
-
----
-
-## Expectations For Claude When Working In This Repo
-
-When responding to a task:
-1. Read the repo and this file first.
-2. Confirm what is already implemented.
-3. Identify what is missing.
-4. Recommend the narrowest sensible next step.
-5. List exact files to change before coding.
-6. Call out schema impact explicitly.
-7. Implement with tests.
-8. Report clearly what changed and what was intentionally deferred.
-
-### Preferred response structure before implementation
-- What is already implemented
-- What is missing
-- Recommended next slice
-- Why it comes next
-- Files to change
-- Schema impact
-- Risks / tradeoffs
-
-### Preferred response structure after implementation
-- What changed
-- Why
-- Files changed
-- Migration details
-- Tests added / updated
-- Deferred follow-ups
-
----
-
-## Non-Negotiable Product Rules
-
-These are settled decisions unless explicitly changed later:
-
-- use the hybrid engine
-- global plan and progression are code-driven
-- AI is used for descriptions, explanations, naming, and bounded ranking only
-- support 7-day detailed scheduling
-- use multiple interpretable scores, not one black-box score
-- support users with full, partial, or no provider data
-- use a parameterized workout library
-- code filters and scores candidate workouts
-- AI may rank among valid candidates later, but code stays in control
-- future activity-to-plan matching will be deterministic backend logic
-
----
-
-## If You Notice More Is Already Built
-
-If the code already contains more than this document suggests:
-- do not ignore it
-- update your assessment
-- build on the real codebase state
-- keep the architecture constraints intact
+All scoring must use multiple interpretable components, not a single master score.
